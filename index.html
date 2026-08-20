@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>亞丁文字冒險</title>
+<style>
+* { box-sizing: border-box; }
+body { margin:0; background:#111; color:#ddd; font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC",sans-serif; }
+#game { max-width:700px; margin:auto; min-height:100vh; display:flex; flex-direction:column; }
+header { padding:14px 16px; background:#1b1b1b; border-bottom:1px solid #333; }
+h1 { margin:0 0 10px; font-size:20px; color:#e5c879; }
+.status { display:grid; grid-template-columns:repeat(2,1fr); gap:5px; font-size:14px; }
+#story { flex:1; padding:18px 16px; overflow-y:auto; line-height:1.7; }
+.message { margin-bottom:18px; white-space:pre-line; }
+.system { color:#aaa; } .player { color:#78b7ff; } .npc { color:#e5c879; } .combat { color:#ff8585; }
+#inputArea { display:flex; gap:8px; padding:12px; background:#1b1b1b; border-top:1px solid #333; }
+#command { flex:1; padding:13px; font-size:16px; color:white; background:#222; border:1px solid #444; border-radius:6px; }
+button { padding:0 18px; border:0; border-radius:6px; background:#806b35; color:white; font-size:16px; }
+.quickActions { display:flex; overflow-x:auto; gap:7px; padding:8px 12px; background:#171717; }
+.quickActions button { white-space:nowrap; padding:8px 12px; background:#333; font-size:14px; }
+</style>
+</head>
+<body>
+<div id="game">
+<header>
+<h1>亞丁文字冒險</h1>
+<div class="status">
+<div>📍 <span id="location"></span></div><div>⚔️ Lv.<span id="level"></span></div>
+<div>❤️ HP <span id="hp"></span></div><div>💰 <span id="gold"></span> 金幣</div>
+</div>
+</header>
+<div id="story"></div>
+<div class="quickActions">
+<button onclick="quick('看看附近')">觀察</button><button onclick="quick('查看狀態')">狀態</button>
+<button onclick="quick('查看背包')">背包</button><button onclick="quick('前往村莊')">村莊</button><button onclick="quick('前往野外')">野外</button>
+</div>
+<div id="inputArea"><input id="command" placeholder="你想做什麼？" autocomplete="off"><button onclick="sendCommand()">送出</button></div>
+</div>
+<script>
+const player={name:"冒險者",level:1,hp:30,maxHp:30,gold:10,location:"說話之島村莊",inventory:["生鏽的短劍"]};
+let enemy=null;
+function updateUI(){locationEl().textContent=player.location;document.getElementById("level").textContent=player.level;document.getElementById("hp").textContent=`${player.hp}/${player.maxHp}`;document.getElementById("gold").textContent=player.gold;saveGame();}
+function locationEl(){return document.getElementById("location");}
+function addMessage(text,type="system"){const story=document.getElementById("story"),div=document.createElement("div");div.className=`message ${type}`;div.textContent=text;story.appendChild(div);story.scrollTop=story.scrollHeight;}
+function sendCommand(){const input=document.getElementById("command"),command=input.value.trim();if(!command)return;addMessage(`> ${command}`,"player");input.value="";processCommand(command);}
+function quick(command){document.getElementById("command").value=command;sendCommand();}
+function processCommand(command){
+ if(player.hp<=0){addMessage("你已經倒下，無法行動。","combat");return;}
+ if(enemy){processCombat(command);return;}
+ if(command.includes("狀態")){addMessage(`${player.name}\nLv.${player.level}\nHP ${player.hp}/${player.maxHp}\n金幣 ${player.gold}\n所在地：${player.location}`);return;}
+ if(command.includes("背包")||command.includes("物品")){addMessage("背包：\n"+player.inventory.join("\n"));return;}
+ if(command.includes("村莊")){player.location="說話之島村莊";addMessage("你回到了村莊。商店、旅館和倉庫分布在道路兩旁。");updateUI();return;}
+ if(command.includes("野外")||command.includes("出去")){player.location="說話之島野外";addMessage("你離開村莊。草原延伸到森林邊緣，遠處傳來奇怪的叫聲。");updateUI();return;}
+ if(command.includes("附近")||command.includes("觀察")||command.includes("看看")){explore();return;}
+ if(command.includes("攻擊")||command.includes("打")){addMessage("附近目前沒有可以攻擊的目標。");return;}
+ addMessage("你嘗試這麼做，但目前世界還不知道該如何回應。");
+}
+function explore(){
+ if(player.location==="說話之島村莊"){addMessage("你看到武器店老闆、幾名守衛，以及通往村外的道路。");return;}
+ if(Math.random()<0.6){enemy={name:"哥布林",hp:12,attack:4};addMessage("草叢突然晃動！一隻哥布林拿著木棒衝了出來。","combat");addMessage("你可以輸入「攻擊」或「逃跑」。");}
+ else{const gold=Math.floor(Math.random()*5)+1;player.gold+=gold;addMessage(`你在草地上找到 ${gold} 枚金幣。`);updateUI();}
+}
+function processCombat(command){
+ if(command.includes("逃")){addMessage(`你成功逃離了${enemy.name}。`);enemy=null;return;}
+ if(command.includes("攻擊")||command.includes("打")){const damage=Math.floor(Math.random()*5)+3;enemy.hp-=damage;addMessage(`你攻擊${enemy.name}，造成 ${damage} 點傷害。`,"combat");if(enemy.hp<=0){const reward=Math.floor(Math.random()*8)+3;player.gold+=reward;addMessage(`${enemy.name}倒下了！你獲得 ${reward} 枚金幣。`,"combat");enemy=null;updateUI();return;}player.hp-=enemy.attack;addMessage(`${enemy.name}反擊，造成 ${enemy.attack} 點傷害。`,"combat");if(player.hp<=0){player.hp=0;addMessage("你倒在了地上……","combat");}updateUI();return;}
+ addMessage(`${enemy.name}正在攻擊你！輸入「攻擊」或「逃跑」。`,"combat");
+}
+function saveGame(){localStorage.setItem("textRPGSave",JSON.stringify(player));}
+function loadGame(){const save=localStorage.getItem("textRPGSave");if(save)Object.assign(player,JSON.parse(save));}
+document.getElementById("command").addEventListener("keydown",e=>{if(e.key==="Enter")sendCommand();});
+loadGame();updateUI();addMessage("你在說話之島醒來。\n\n海風吹過村莊。\n\n你只記得自己的名字，卻不知道為什麼會來到這裡。\n\n身上只有一把生鏽的短劍，以及 10 枚金幣。\n\n你可以直接輸入你想做的事情。");
+</script>
+</body>
+</html>
