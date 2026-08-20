@@ -11,4 +11,14 @@
   const originalRender=window.render;
   window.render=function(){originalRender();refresh()};
   refresh();
+
+  // Load narrative event extensions only after the base runtime and
+  // location-aware UI are ready. A load failure leaves the core game intact.
+  if(!document.querySelector('script[data-absurd-events]')){
+    const script=document.createElement('script');
+    script.src='absurd-events.js';
+    script.defer=true;
+    script.dataset.absurdEvents='true';
+    document.body.appendChild(script);
+  }
 })();
