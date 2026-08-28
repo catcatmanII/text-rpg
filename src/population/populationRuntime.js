@@ -1,6 +1,7 @@
 export class PopulationRuntime {
   constructor({ registry, settlement, emit } = {}) { this.registry = registry; this.settlement = settlement; this.emit = emit; this.nextBirthAt = 1440; this.nextId = 1; }
   setSettlement(settlement) { this.settlement = settlement; }
+  addNewcomers(count, worldTime) { for (let index = 0; index < count; index += 1) { const newcomer = { id: `npc-newcomer-${this.nextId++}`, name: '新居民', type: 'NPC', profession: 'LABORER', autonomous: true, alive: true, zoneId: 'village', location: { x: 0, y: 0 }, homeLocation: { x: 0, y: 0 }, ageDays: 20, maxAgeDays: 80, hp: 10, maxHp: 10, attack: 1, gold: 0, inventory: {}, needs: { fatigue: 0, hunger: 0, safety: 100 } }; this.registry.add(newcomer); this.emit?.({ type: 'NPC_JOINED', entityId: newcomer.id, source: 'DECISION_EVENT', worldTime }); } }
   tick(worldTime, minutes = 1) {
     for (const entity of this.registry.all()) if (entity.type === 'NPC' && entity.alive !== false) {
       entity.ageDays = (entity.ageDays ?? 20) + minutes / 1440;

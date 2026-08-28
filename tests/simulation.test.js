@@ -315,3 +315,15 @@ test('buildings consume resources, change effects and survive save/load', () => 
   assert.equal(restored.buildings.has('HOUSE'), true);
   assert.equal(restored.settlement.resources.wood, 0);
 });
+
+test('daily decision events pause for a player choice and apply consequences', () => {
+  const world = createMinimalWorld();
+  world.settlement.addResource('wood', 10);
+  world.step(1080);
+  assert.equal(world.currentEvent().id, 'dry_field');
+  const before = world.settlement.prosperity;
+  assert.equal(world.resolveEvent('irrigate').ok, true);
+  assert.equal(world.currentEvent(), null);
+  assert.equal(world.settlement.prosperity, before + 5);
+  assert.ok(world.eventLog.events.some(event => event.type === 'DECISION_EVENT_RESOLVED'));
+});
