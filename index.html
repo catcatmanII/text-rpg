@@ -1,1 +1,16 @@
-<!doctype html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>模擬世界</title><link rel="stylesheet" href="./web/styles.css"></head><body><main class="shell"><header><div><p class="eyebrow">WORLD SIMULATION</p><h1>模擬世界</h1><p class="muted">不接 LLM 也能自行運行的資料驅動世界</p></div><div id="world-status" class="status">載入中</div></header><section class="controls"><button id="toggle">啟動</button><button id="step">單步 +1 分鐘</button><button id="reset">重新開始</button></section><section class="dashboard"><article class="card summary"><h2>世界狀態</h2><div id="summary"></div></article><article class="card"><h2>玩家行動</h2><div id="activities"></div><div id="activity-progress" class="interaction-box muted">選擇一項行動協助村落。</div></article><article class="card"><h2>世界角色</h2><div id="entities"></div></article><article class="card"><h2>居民互動</h2><div id="interactions"></div><div id="interaction-box" class="interaction-box muted">選擇一名居民查看詳細資料。</div></article><article class="card events"><h2>最近事件</h2><div id="events"></div></article></section></main><script type="module" src="./web/app.js"></script></body></html>
+<!doctype html>
+<html lang="zh-Hant">
+  <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#0b1220"><title>模擬世界</title><link rel="stylesheet" href="./web/styles.css"></head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar"><div><p class="eyebrow">WORLD SIMULATION</p><h1>模擬世界</h1><p class="muted">村落正在自行運轉</p></div><div id="world-status" class="status">載入中</div></header>
+      <section id="overview" class="screen active"><div class="card hero"><h2>今日狀態</h2><div id="summary" class="metric-grid"></div></div><div class="card"><h2>需要你的決定</h2><div id="overview-event"></div></div><div class="card"><h2>最近變化</h2><div id="events-preview"></div></div></section>
+      <section id="town" class="screen"><div class="card"><h2>城鎮資源</h2><div id="town-resources" class="metric-grid"></div></div><div class="card"><h2>城鎮建設</h2><div id="buildings"></div></div></section>
+      <section id="action" class="screen"><div class="card"><h2>玩家行動</h2><p class="muted">行動會消耗能量，完成後直接改變村落。</p><div id="activities"></div><div id="activity-progress" class="interaction-box muted">選擇一項行動。</div></div></section>
+      <section id="residents" class="screen"><div class="card"><h2>居民</h2><div id="interactions"></div><div id="interaction-box" class="interaction-box muted">選擇居民查看資料。</div></div></section>
+      <section id="events" class="screen"><div class="card"><h2>事件中心</h2><div id="event-center"></div></div><div class="card"><h2>世界紀錄</h2><div id="event-log"></div></div></section>
+      <nav class="bottom-nav" aria-label="主要導覽"><button class="nav-item active" data-tab="overview">總覽</button><button class="nav-item" data-tab="town">城鎮</button><button class="nav-item" data-tab="action">行動</button><button class="nav-item" data-tab="residents">居民</button><button class="nav-item" data-tab="events">事件</button></nav>
+      <div class="quick-controls"><button id="toggle">啟動</button><button id="step">推進 1 分鐘</button><button id="reset">重新開始</button></div>
+    </main><script type="module" src="./web/app.js"></script>
+  </body>
+</html>

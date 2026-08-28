@@ -27,6 +27,7 @@ import { ActivityRuntime } from '../src/activity/activityRuntime.js';
 import { PlayerEnergyRuntime } from '../src/player/playerEnergyRuntime.js';
 import { SettlementRuntime } from '../src/settlement/settlementRuntime.js';
 import { ThreatRuntime } from '../src/world/threatRuntime.js';
+import { readFileSync } from 'node:fs';
 
 test('world can start, tick, pause and resume', () => {
   const world = new WorldRuntime({ worldId: 'mvp', startMinutes: 360 });
@@ -348,4 +349,11 @@ test('resident trust unlocks a personal event with a persistent outcome', () => 
   assert.equal(result.ok, true); assert.equal(world.settlement.prosperity, before + 8);
   assert.equal(world.currentResidentEvent(), null);
   assert.equal(world.residentEvents.completed.farmer_legacy.optionId, 'fund_project');
+});
+
+test('mobile presentation has viewport, tab navigation and touch controls', () => {
+  const html = readFileSync(new URL('../web/index.html', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('../web/styles.css', import.meta.url), 'utf8');
+  assert.match(html, /viewport-fit=cover/); assert.match(html, /data-tab="town"/); assert.match(html, /id="event-center"/);
+  assert.match(css, /\.bottom-nav/); assert.match(css, /min-height: 44px/); assert.match(css, /@media \(min-width: 700px\)/);
 });
