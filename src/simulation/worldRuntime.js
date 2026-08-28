@@ -80,6 +80,8 @@ export class WorldRuntime {
   registerAgent(entity) { this.addEntity(entity); this.agents.register(entity.id); return entity; }
   setGoal(actorId, goal) { return this.agents.setGoal(actorId, goal, this.clock.minutes); }
   talk(actorId, targetId) { return this.interactions.talk(actorId, targetId); }
+  inspectResident(targetId) { return this.interactions.inspect(targetId); }
+  acceptResidentRequest(actorId, targetId) { return this.interactions.acceptRequest(actorId, targetId); }
 
   start() { this.mode = 'RUNNING'; this.#emit('WORLD_STARTED'); }
   pause() { if (this.mode === 'RUNNING') { this.mode = 'PAUSED'; this.#emit('WORLD_PAUSED'); } }

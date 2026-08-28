@@ -228,3 +228,12 @@ test('player can talk to a resident and relationship changes deterministically',
   assert.deepEqual(interaction.talk('player', 'resident'), { ok: true, reply: '早安。', relationship: 1 });
   assert.equal(registry.get('player').relationships.resident, 1); assert.equal(events[0].type, 'TALKED');
 });
+
+test('resident content supports inspection, requests and changing dialogue', () => {
+  const world = createMinimalWorld();
+  const info = world.inspectResident('farmer-a');
+  assert.equal(info.resident.personality, '務實、愛操心');
+  assert.equal(world.acceptResidentRequest('player', 'farmer-a').ok, true);
+  assert.equal(world.talk('player', 'farmer-a').reply, '今年的田地需要更多人手。');
+  assert.equal(world.talk('player', 'farmer-a').reply, '謝謝你願意聽我說，農作物總算有希望了。');
+});
