@@ -337,3 +337,15 @@ test('threat pressure causes an incident and can be reduced by clearing', () => 
   assert.equal(threat.pressure, 10);
   assert.equal(threat.reduce(10), 0);
 });
+
+test('resident trust unlocks a personal event with a persistent outcome', () => {
+  const world = createMinimalWorld();
+  world.talk('player', 'farmer-a'); world.talk('player', 'farmer-a');
+  world.step(1080);
+  assert.equal(world.currentResidentEvent().id, 'farmer_legacy');
+  const before = world.settlement.prosperity;
+  const result = world.resolveResidentEvent('fund_project');
+  assert.equal(result.ok, true); assert.equal(world.settlement.prosperity, before + 8);
+  assert.equal(world.currentResidentEvent(), null);
+  assert.equal(world.residentEvents.completed.farmer_legacy.optionId, 'fund_project');
+});
