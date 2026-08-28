@@ -10,15 +10,15 @@ const setInteractionBox = text => { const box = $('interaction-box'); if (box) b
 
 function render() {
   const view = observer.describe(world);
-  $('world-status').textContent = `${world.mode} · ${view.worldMinutes} 分鐘`;
+  $('world-status').textContent = `${labelOf(world.mode)} · ${view.worldMinutes} 分鐘`;
   $('summary').innerHTML = `<div class="row"><span>世界</span><strong>${view.worldId}</strong></div><div class="row"><span>時間</span><strong>第 ${Math.floor(view.worldMinutes / 1440) + 1} 天 ${view.worldMinutes % 1440} 分</strong></div><div class="row"><span>版本</span><strong>${view.version}</strong></div><div class="row"><span>事件數</span><strong>${world.eventLog.events.length}</strong></div>`;
   const player = world.entities.get('player'); const activity = world.activities.progress(); const settlement = world.settlement.snapshot();
   $('summary').innerHTML += `<div class="row"><span>玩家能量</span><strong>${player?.energy ?? 100}／${player?.maxEnergy ?? 100}</strong></div><div class="row"><span>村落繁榮度</span><strong>${settlement.prosperity}｜等級 ${settlement.level}</strong></div><div class="row"><span>村落食物</span><strong>${settlement.food}</strong></div>`;
   const activityNames = { FARM: '協助農務', GUARD: '協助守衛', CLEAR: '清剿怪物', BUILD: '建設村落' };
   $('activities').innerHTML = Object.entries(activityNames).map(([id, name]) => `<div class="row"><span>${name}</span><button data-activity="${id}" ${activity ? 'disabled' : ''}>開始</button></div>`).join('');
   $('activity-progress').innerHTML = activity ? `<strong>${activityNames[activity.activityId]}</strong><div class="progress"><div style="width:${activity.ratio * 100}%"></div></div><span class="small">進度 ${Math.floor(activity.ratio * 100)}%</span>` : '選擇一項行動協助村落。';
-  $('entities').innerHTML = view.entities.map(entity => `<div class="entity"><strong>${entity.id}</strong> <span class="small">${labelOf(entity.type)}</span><br><span class="small">區域=${entity.zoneId === 'village' ? '村莊' : entity.zoneId === 'hunt' ? '狩獵區' : entity.zoneId ?? '-'} · 生命=${entity.hp ?? '-'} · 目標=${labelOf(entity.goal)}</span></div>`).join('');
-  $('interactions').innerHTML = view.entities.filter(entity => entity.type === 'NPC' && entity.zoneId === 'village').map(entity => `<div class="row"><span>${entity.id}</span><span><button data-inspect="${entity.id}">查看</button><button data-talk="${entity.id}">交談</button><button data-request="${entity.id}">接受請求</button></span></div>`).join('') || '<span class="muted">目前沒有可交談的居民</span>';
+  $('entities').innerHTML = view.entities.map(entity => `<div class="entity"><strong>${entity.name}</strong> <span class="small">${labelOf(entity.type)}</span><br><span class="small">區域=${entity.zoneId === 'village' ? '村莊' : entity.zoneId === 'hunt' ? '狩獵區' : entity.zoneId ?? '-'} · 生命=${entity.hp ?? '-'} · 目標=${labelOf(entity.goal)}</span></div>`).join('');
+  $('interactions').innerHTML = view.entities.filter(entity => entity.type === 'NPC' && entity.zoneId === 'village').map(entity => `<div class="resident-row"><div><strong>${entity.name}</strong><span class="small">${entity.profession ?? '居民'}</span></div><div class="button-row"><button data-inspect="${entity.id}">查看</button><button data-talk="${entity.id}">交談</button><button data-request="${entity.id}">接取請求</button></div></div>`).join('') || '<span class="muted">目前沒有可交談的居民</span>';
   $('events').innerHTML = view.recentEvents.map(event => `<div class="event"><time>@${event.worldTime}</time>${labelOf(event.type)}</div>`).join('') || '<span class="muted">尚無事件</span>';
   $('toggle').textContent = world.mode === 'RUNNING' ? '暫停' : '啟動';
 }

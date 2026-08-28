@@ -116,7 +116,7 @@ export class WorldRuntime {
     this.causality.tick(this.clock.minutes);
     this.requests.evaluate(this.clock.minutes);
     this.activities.tick(minutes);
-    this.settlement.tick({ population: this.population.stats().alive });
+    this.settlement.tick({ population: this.population.stats().alive, minutes });
     this.worldEvents.evaluate(this.clock.minutes, event => { this.#emit('WORLD_EVENT', event); if (event.type === 'MARKET_DAY') this.resources.replenish(); });
     return this.#emit('WORLD_TICK', { minutes, version: this.state.version });
   }

@@ -262,7 +262,7 @@ test('player activities consume energy, show progress and increase settlement pr
 test('prosperity does not passively decay, only sustained shortage can reduce it', () => {
   const settlement = new SettlementRuntime({ levels: [] }); settlement.prosperity = 20;
   settlement.tick({ population: 1 }); assert.equal(settlement.prosperity, 20);
-  for (let index = 0; index < 58; index += 1) settlement.tick({ population: 1 }); assert.equal(settlement.prosperity, 20);
+  for (let index = 0; index < 178; index += 1) settlement.tick({ population: 1 }); assert.equal(settlement.prosperity, 20);
   settlement.tick({ population: 1 }); assert.equal(settlement.prosperity, 19);
 });
 
