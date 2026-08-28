@@ -32,6 +32,7 @@ import { ActivityRuntime } from '../activity/activityRuntime.js';
 import { activityDefinitions } from '../activity/activityDefinitions.js';
 import { SettlementRuntime } from '../settlement/settlementRuntime.js';
 import { settlementLevels } from '../content/settlementLevels.js';
+import { ThreatRuntime } from '../world/threatRuntime.js';
 
 export class WorldRuntime {
   constructor({ worldId = 'world_001', startMinutes = 0 } = {}) {
@@ -60,6 +61,7 @@ export class WorldRuntime {
     this.requests = new RequestRuntime({ registry: this.entities, economy: this.economy, emit: event => this.#emit(event.type, event) });
     this.causality = new CausalityRuntime({ registry: this.entities, economy: this.economy, emit: event => this.#emit(event.type, event) });
     this.settlement = new SettlementRuntime({ emit: event => this.#emit(event.type, event), levels: settlementLevels });
+    this.threat = new ThreatRuntime({ registry: this.entities, settlement: this.settlement, emit: event => this.#emit(event.type, event) });
     this.energy = new PlayerEnergyRuntime({ registry: this.entities, emit: event => this.#emit(event.type, event) });
     this.activities = new ActivityRuntime({ registry: this.entities, energy: this.energy, definitions: activityDefinitions, settlement: this.settlement, emit: event => this.#emit(event.type, event) });
     this.actionResolver = new ActionResolver({ movement: this.movement, combat: this.combat, inventory: this.inventory, onEvent: event => this.#emit(event.type, event) });
@@ -111,6 +113,7 @@ export class WorldRuntime {
     while (this.agents.actions.length) this.actionResolver.resolve(this.agents.actions.dequeue(), this);
     this.spawn.markDeaths(this.clock.minutes);
     this.spawn.evaluate(this.clock.minutes);
+    this.threat.tick(this.clock.minutes);
     this.population.tick(this.clock.minutes, minutes);
     this.economy.tick(this.clock.minutes, minutes);
     this.causality.tick(this.clock.minutes);

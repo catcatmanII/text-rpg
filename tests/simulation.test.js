@@ -26,6 +26,7 @@ import { InteractionRuntime } from '../src/interaction/interactionRuntime.js';
 import { ActivityRuntime } from '../src/activity/activityRuntime.js';
 import { PlayerEnergyRuntime } from '../src/player/playerEnergyRuntime.js';
 import { SettlementRuntime } from '../src/settlement/settlementRuntime.js';
+import { ThreatRuntime } from '../src/world/threatRuntime.js';
 
 test('world can start, tick, pause and resume', () => {
   const world = new WorldRuntime({ worldId: 'mvp', startMinutes: 360 });
@@ -273,4 +274,13 @@ test('minimal world exposes player energy and settlement state', () => {
   assert.equal(world.activities.progress().activityId, 'BUILD');
   world.step(15);
   assert.ok(world.settlement.prosperity > 0);
+});
+
+test('threat grows by world cycle and settlement level', () => {
+  const registry = new EntityRegistry({ goblin: { id: 'goblin', type: 'MONSTER', alive: true, hp: 6, maxHp: 6, attack: 1 } });
+  const settlement = { level: 2 }; const events = [];
+  const threat = new ThreatRuntime({ registry, settlement, emit: event => events.push(event) });
+  threat.tick(1440); assert.equal(registry.get('goblin').maxHp, 10); assert.equal(registry.get('goblin').attack, 2); assert.equal(events[0].type, 'THREAT_ESCALATED');
+  threat.tick(1440); assert.equal(registry.get('goblin').maxHp, 10);
+  threat.tick(2880); assert.equal(registry.get('goblin').maxHp, 12);
 });

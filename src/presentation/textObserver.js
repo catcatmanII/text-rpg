@@ -2,7 +2,7 @@ import { labelOf } from './labels.js';
 export class TextObserver {
   describe(world) {
     const entities = world.entities.all().map(entity => ({ id: entity.id, name: entity.name ?? entity.id, type: entity.type, zoneId: entity.zoneId, location: entity.location, hp: entity.hp, profession: entity.profession, goal: world.agents.goals.current(entity.id).type }));
-    return { worldId: world.worldId, mode: world.mode, worldMinutes: world.clock.minutes, version: world.state.version, entities, population: world.population?.stats(), statistics: world.stats?.snapshot(), economy: world.economy?.snapshot(), settlement: world.settlement?.snapshot(), recentEvents: world.eventLog.events.slice(-10) };
+    return { worldId: world.worldId, mode: world.mode, worldMinutes: world.clock.minutes, version: world.state.version, entities, population: world.population?.stats(), statistics: world.stats?.snapshot(), economy: world.economy?.snapshot(), settlement: world.settlement?.snapshot(), threat: world.threat?.lastCycle, recentEvents: world.eventLog.events.slice(-10) };
   }
   render(world) {
     const view = this.describe(world);
