@@ -23,6 +23,9 @@ import { SpawnRuntime } from '../src/world/spawnRuntime.js';
 import { PopulationRuntime } from '../src/population/populationRuntime.js';
 import { labelOf } from '../src/presentation/labels.js';
 import { InteractionRuntime } from '../src/interaction/interactionRuntime.js';
+import { ActivityRuntime } from '../src/activity/activityRuntime.js';
+import { PlayerEnergyRuntime } from '../src/player/playerEnergyRuntime.js';
+import { SettlementRuntime } from '../src/settlement/settlementRuntime.js';
 
 test('world can start, tick, pause and resume', () => {
   const world = new WorldRuntime({ worldId: 'mvp', startMinutes: 360 });
@@ -245,4 +248,22 @@ test('resident requests can be completed and cause rewards and relationship chan
   assert.equal(world.entities.get('player').requests['resident-a'].completed, true);
   assert.equal(world.entities.get('player').exp, 3);
   assert.equal(world.eventLog.events.at(-1).type, 'REQUEST_COMPLETED');
+});
+
+test('player activities consume energy, show progress and increase settlement prosperity', () => {
+  const registry = new EntityRegistry({ player: { id: 'player', type: 'PLAYER', energy: 100 } }); const events = [];
+  const energy = new PlayerEnergyRuntime({ registry }); const settlement = new SettlementRuntime({ emit: event => events.push(event), levels: [{ level: 2, prosperity: 8, population: 1, food: 0 }] });
+  const activities = new ActivityRuntime({ registry, energy, settlement, definitions: { FARM: { id: 'FARM', duration: 3, energy: 10, rewards: { food: 5, prosperity: 8 } } }, emit: event => events.push(event) });
+  assert.equal(activities.start('player', 'FARM').ok, true); assert.equal(registry.get('player').energy, 90);
+  assert.equal(activities.tick(1).status, 'IN_PROGRESS'); assert.equal(activities.progress().ratio, 1 / 3);
+  assert.equal(activities.tick(2).status, 'COMPLETED'); assert.equal(settlement.prosperity, 8); settlement.tick({ population: 1 }); assert.equal(settlement.level, 2);
+});
+
+test('minimal world exposes player energy and settlement state', () => {
+  const world = createMinimalWorld();
+  assert.equal(world.entities.get('player').energy, undefined);
+  world.startActivity('BUILD');
+  assert.equal(world.activities.progress().activityId, 'BUILD');
+  world.step(15);
+  assert.ok(world.settlement.prosperity > 0);
 });

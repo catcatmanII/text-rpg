@@ -27,6 +27,11 @@ import { economyDefinitions } from '../content/economyDefinitions.js';
 import { WorldStatsRuntime } from '../world/worldStatsRuntime.js';
 import { RequestRuntime } from '../interaction/requestRuntime.js';
 import { CausalityRuntime } from '../world/causalityRuntime.js';
+import { PlayerEnergyRuntime } from '../player/playerEnergyRuntime.js';
+import { ActivityRuntime } from '../activity/activityRuntime.js';
+import { activityDefinitions } from '../activity/activityDefinitions.js';
+import { SettlementRuntime } from '../settlement/settlementRuntime.js';
+import { settlementLevels } from '../content/settlementLevels.js';
 
 export class WorldRuntime {
   constructor({ worldId = 'world_001', startMinutes = 0 } = {}) {
@@ -54,6 +59,9 @@ export class WorldRuntime {
     this.stats = new WorldStatsRuntime({ eventLog: this.eventLog, registry: this.entities });
     this.requests = new RequestRuntime({ registry: this.entities, economy: this.economy, emit: event => this.#emit(event.type, event) });
     this.causality = new CausalityRuntime({ registry: this.entities, economy: this.economy, emit: event => this.#emit(event.type, event) });
+    this.settlement = new SettlementRuntime({ emit: event => this.#emit(event.type, event), levels: settlementLevels });
+    this.energy = new PlayerEnergyRuntime({ registry: this.entities, emit: event => this.#emit(event.type, event) });
+    this.activities = new ActivityRuntime({ registry: this.entities, energy: this.energy, definitions: activityDefinitions, settlement: this.settlement, emit: event => this.#emit(event.type, event) });
     this.actionResolver = new ActionResolver({ movement: this.movement, combat: this.combat, inventory: this.inventory, onEvent: event => this.#emit(event.type, event) });
     this.agents = new AgentRuntime({
       onGoalChanged: (actorId, goal) => this.#emit('GOAL_CHANGED', { actorId, goal: goal.toJSON() }),
@@ -86,6 +94,7 @@ export class WorldRuntime {
   talk(actorId, targetId) { return this.interactions.talk(actorId, targetId); }
   inspectResident(targetId) { return this.interactions.inspect(targetId); }
   acceptResidentRequest(actorId, targetId) { return this.interactions.acceptRequest(actorId, targetId); }
+  startActivity(activityId, playerId = 'player') { return this.activities.start(playerId, activityId); }
   evaluateRequests() { this.requests.evaluate(this.clock.minutes); }
 
   start() { this.mode = 'RUNNING'; this.#emit('WORLD_STARTED'); }
@@ -98,6 +107,7 @@ export class WorldRuntime {
     this.clock.advance(minutes);
     this.state.version += 1;
     this.agents.tick({ worldTime: this.clock.minutes, minutes, world: this });
+    this.energy.tick(minutes);
     while (this.agents.actions.length) this.actionResolver.resolve(this.agents.actions.dequeue(), this);
     this.spawn.markDeaths(this.clock.minutes);
     this.spawn.evaluate(this.clock.minutes);
@@ -105,6 +115,8 @@ export class WorldRuntime {
     this.economy.tick(this.clock.minutes, minutes);
     this.causality.tick(this.clock.minutes);
     this.requests.evaluate(this.clock.minutes);
+    this.activities.tick(minutes);
+    this.settlement.tick({ population: this.population.stats().alive });
     this.worldEvents.evaluate(this.clock.minutes, event => { this.#emit('WORLD_EVENT', event); if (event.type === 'MARKET_DAY') this.resources.replenish(); });
     return this.#emit('WORLD_TICK', { minutes, version: this.state.version });
   }

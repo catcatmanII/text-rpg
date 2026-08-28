@@ -1,0 +1,5 @@
+export const settlementLevels = Object.freeze([
+  { level: 2, prosperity: 50, population: 5, food: 10, name: '小型聚落' },
+  { level: 3, prosperity: 140, population: 8, food: 25, name: '繁榮村落' },
+  { level: 4, prosperity: 300, population: 12, food: 50, name: '城鎮' }
+]);

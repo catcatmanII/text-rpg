@@ -15,4 +15,7 @@ button:hover { background: #3b82f6; } #reset { background: #475569; }
 .row:last-child { border-bottom: 0; } .entity { margin-bottom: 12px; } .entity strong { color: #f8fafc; } .small { color: #94a3b8; font-size: .9rem; }
 .event { padding: 5px 0; color: #cbd5e1; font-size: .9rem; } .event time { color: #60a5fa; margin-right: 8px; }
 .interaction-box { margin-top: 14px; border: 1px solid #334155; border-radius: 8px; padding: 12px; line-height: 1.6; }
+.progress { height: 10px; margin: 10px 0 6px; overflow: hidden; border-radius: 99px; background: #1e293b; }
+.progress div { height: 100%; background: #22c55e; transition: width .2s linear; }
+button:disabled { cursor: not-allowed; opacity: .45; }
 @media (max-width: 700px) { header { display: block; } .status { display: inline-block; } .dashboard { grid-template-columns: 1fr; } .summary { grid-column: auto; } }
