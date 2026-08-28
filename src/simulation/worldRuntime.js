@@ -56,11 +56,11 @@ export class WorldRuntime {
     this.spawn = new SpawnRuntime({ registry: this.entities, definitions: spawnDefinitions, createEntity: entity => entity, emit: event => this.#emit(event.type, event) });
     this.population = new PopulationRuntime({ registry: this.entities, emit: event => this.#emit(event.type, event) });
     this.interactions = new InteractionRuntime({ registry: this.entities, emit: event => this.#emit(event.type, event) });
-    this.economy = new EconomyRuntime({ registry: this.entities, inventory: this.inventory, emit: event => this.#emit(event.type, event), definitions: economyDefinitions });
-    this.stats = new WorldStatsRuntime({ eventLog: this.eventLog, registry: this.entities });
-    this.requests = new RequestRuntime({ registry: this.entities, economy: this.economy, emit: event => this.#emit(event.type, event) });
-    this.causality = new CausalityRuntime({ registry: this.entities, economy: this.economy, emit: event => this.#emit(event.type, event) });
     this.settlement = new SettlementRuntime({ emit: event => this.#emit(event.type, event), levels: settlementLevels });
+    this.economy = new EconomyRuntime({ registry: this.entities, inventory: this.inventory, settlement: this.settlement, emit: event => this.#emit(event.type, event), definitions: economyDefinitions });
+    this.stats = new WorldStatsRuntime({ eventLog: this.eventLog, registry: this.entities });
+    this.requests = new RequestRuntime({ registry: this.entities, economy: this.economy, settlement: this.settlement, emit: event => this.#emit(event.type, event) });
+    this.causality = new CausalityRuntime({ registry: this.entities, economy: this.economy, settlement: this.settlement, emit: event => this.#emit(event.type, event) });
     this.threat = new ThreatRuntime({ registry: this.entities, settlement: this.settlement, emit: event => this.#emit(event.type, event) });
     this.energy = new PlayerEnergyRuntime({ registry: this.entities, emit: event => this.#emit(event.type, event) });
     this.activities = new ActivityRuntime({ registry: this.entities, energy: this.energy, definitions: activityDefinitions, settlement: this.settlement, emit: event => this.#emit(event.type, event) });

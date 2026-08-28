@@ -1,5 +1,5 @@
 export class CausalityRuntime {
-  constructor({ registry, economy, emit } = {}) { this.registry = registry; this.economy = economy; this.emit = emit; }
+  constructor({ registry, economy, settlement, emit } = {}) { this.registry = registry; this.economy = economy; this.settlement = settlement; this.emit = emit; }
   tick(worldTime) {
     const monsters = this.registry.all().filter(entity => entity.type === 'MONSTER' && entity.alive !== false).length;
     const guards = this.registry.all().filter(entity => entity.profession === 'GUARD' && entity.alive !== false).length;
@@ -8,6 +8,6 @@ export class CausalityRuntime {
       resident.needs ??= {}; const previous = resident.needs.safety ?? 100; resident.needs.safety = safety;
       if (Math.abs(previous - safety) >= 10) this.emit?.({ type: 'SAFETY_CHANGED', entityId: resident.id, from: previous, to: safety, worldTime });
     }
-    this.emit?.({ type: 'VILLAGE_STATE', safety, food: this.economy.stock.food ?? 0, livingMonsters: monsters });
+    this.emit?.({ type: 'VILLAGE_STATE', safety, food: this.settlement?.food ?? this.economy.stock.food ?? 0, morale: this.settlement?.morale ?? 50, livingMonsters: monsters });
   }
 }

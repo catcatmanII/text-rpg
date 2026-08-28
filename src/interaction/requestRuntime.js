@@ -1,5 +1,5 @@
 export class RequestRuntime {
-  constructor({ registry, economy, emit } = {}) { this.registry = registry; this.economy = economy; this.emit = emit; }
+  constructor({ registry, economy, settlement, emit } = {}) { this.registry = registry; this.economy = economy; this.settlement = settlement; this.emit = emit; }
   evaluate(worldTime) {
     for (const actor of this.registry.all()) {
       for (const [targetId, request] of Object.entries(actor.requests ?? {})) {
@@ -13,7 +13,7 @@ export class RequestRuntime {
   }
   #isComplete(actor, request, targetId) {
     if (request.type === 'TALK_COUNT') return (actor.relationships?.[targetId] ?? 0) >= request.required;
-    if (request.type === 'FOOD_STOCK') return (this.economy.stock.food ?? 0) >= request.required;
+    if (request.type === 'FOOD_STOCK') return (this.settlement?.food ?? this.economy.stock.food ?? 0) >= request.required;
     if (request.type === 'ITEM_COUNT') return (actor.inventory?.[request.itemId] ?? 0) >= request.required;
     if (request.type === 'ACTIVITY') return (actor.completedActivities ?? []).filter(activityId => activityId === request.activityId).length >= request.required;
     if (request.type === 'MONSTER_LIMIT') return this.registry.all().filter(entity => entity.type === 'MONSTER' && entity.alive !== false).length <= request.required;

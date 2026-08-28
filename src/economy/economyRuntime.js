@@ -1,6 +1,6 @@
 export class EconomyRuntime {
-  constructor({ registry, inventory, emit, definitions = [] } = {}) {
-    this.registry = registry; this.inventory = inventory; this.emit = emit;
+  constructor({ registry, inventory, settlement, emit, definitions = [] } = {}) {
+    this.registry = registry; this.inventory = inventory; this.settlement = settlement; this.emit = emit;
     this.definitions = Object.fromEntries(definitions.map(definition => [definition.profession, definition]));
     this.stock = {};
   }
@@ -9,7 +9,7 @@ export class EconomyRuntime {
       if (entity.type !== 'NPC' || entity.alive === false) continue;
       const definition = this.definitions[entity.profession];
       if (definition && entity.activity !== 'SLEEP' && entity.zoneId === definition.workZoneId) {
-        for (const [itemId, amount] of Object.entries(definition.production ?? {})) this.stock[itemId] = (this.stock[itemId] ?? 0) + amount * minutes;
+        for (const [itemId, amount] of Object.entries(definition.production ?? {})) { if (itemId === 'food' && this.settlement) this.settlement.addResource('food', amount * minutes); else this.stock[itemId] = (this.stock[itemId] ?? 0) + amount * minutes; }
         this.emit?.({ type: 'RESOURCE_PRODUCED', entityId: entity.id, profession: entity.profession, production: definition.production });
       }
       // 食物由 SettlementRuntime 按日配給；居民需求只做低頻提示，避免每分鐘重複扣糧。

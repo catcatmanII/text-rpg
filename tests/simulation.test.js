@@ -284,3 +284,12 @@ test('threat grows by world cycle and settlement level', () => {
   threat.tick(1440); assert.equal(registry.get('goblin').maxHp, 10);
   threat.tick(2880); assert.equal(registry.get('goblin').maxHp, 12);
 });
+
+test('settlement owns food production and resource capacity', () => {
+  const world = createMinimalWorld();
+  world.step(60);
+  assert.ok(world.settlement.food > 0);
+  assert.equal(world.economy.stock.food ?? 0, 0);
+  world.settlement.addResource('wood', 999);
+  assert.equal(world.settlement.resources.wood, 100);
+});
