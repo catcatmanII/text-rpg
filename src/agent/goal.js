@@ -1,4 +1,4 @@
-export const GOALS = Object.freeze(['IDLE', 'HUNT', 'SUPPLY', 'RETURN', 'RECOVER']);
+export const GOALS = Object.freeze(['IDLE', 'HUNT', 'SUPPLY', 'RETURN', 'RECOVER', 'WORK']);
 
 export class Goal {
   constructor({ type = 'IDLE', priority = 0, reason = 'default', startedAt = 0 } = {}) {

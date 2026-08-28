@@ -33,7 +33,7 @@ test('world can start, tick, pause and resume', () => {
   world.resume();
   assert.equal(world.clock.minutes, 366);
   assert.equal(world.state.version, 2);
-  assert.deepEqual(world.eventLog.events.map(e => e.type), ['WORLD_STARTED', 'WORLD_TICK', 'WORLD_PAUSED', 'WORLD_TICK', 'WORLD_RESUMED']);
+  assert.deepEqual(world.eventLog.events.map(e => e.type).filter(type => type.startsWith('WORLD_')), ['WORLD_STARTED', 'WORLD_TICK', 'WORLD_PAUSED', 'WORLD_TICK', 'WORLD_RESUMED']);
 });
 
 test('world snapshot can be saved and loaded', () => {

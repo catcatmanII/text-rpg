@@ -9,6 +9,7 @@ export class DefaultActionPlanner {
     if (goal === 'RECOVER') return new Action({ type: 'REST', actorId, payload: { goal } });
     if (goal === 'RETURN') return new Action({ type: 'MOVE', actorId, destination: actor.homeLocation ?? actor.location, payload: { goal } });
     if (goal === 'SUPPLY') return new Action({ type: 'BUY', actorId, payload: { goal, itemId: 'potion', quantity: 1 } });
+    if (goal === 'WORK') return new Action({ type: 'MOVE', actorId, destination: actor.workLocation ?? actor.location, payload: { goal } });
     if (goal === 'HUNT') {
       const target = this.targetSelector.nearest(actor, this.nearbyProvider(actor), { maxDistance: 1.5 });
       if (target) return new Action({ type: 'ATTACK', actorId, targetId: target.id, payload: { goal } });

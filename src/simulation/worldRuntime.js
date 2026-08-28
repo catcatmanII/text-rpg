@@ -22,6 +22,9 @@ import { SpawnRuntime } from '../world/spawnRuntime.js';
 import { spawnDefinitions } from '../content/spawnDefinitions.js';
 import { PopulationRuntime } from '../population/populationRuntime.js';
 import { InteractionRuntime } from '../interaction/interactionRuntime.js';
+import { EconomyRuntime } from '../economy/economyRuntime.js';
+import { economyDefinitions } from '../content/economyDefinitions.js';
+import { WorldStatsRuntime } from '../world/worldStatsRuntime.js';
 
 export class WorldRuntime {
   constructor({ worldId = 'world_001', startMinutes = 0 } = {}) {
@@ -45,6 +48,8 @@ export class WorldRuntime {
     this.spawn = new SpawnRuntime({ registry: this.entities, definitions: spawnDefinitions, createEntity: entity => entity, emit: event => this.#emit(event.type, event) });
     this.population = new PopulationRuntime({ registry: this.entities, emit: event => this.#emit(event.type, event) });
     this.interactions = new InteractionRuntime({ registry: this.entities, emit: event => this.#emit(event.type, event) });
+    this.economy = new EconomyRuntime({ registry: this.entities, inventory: this.inventory, emit: event => this.#emit(event.type, event), definitions: economyDefinitions });
+    this.stats = new WorldStatsRuntime({ eventLog: this.eventLog, registry: this.entities });
     this.actionResolver = new ActionResolver({ movement: this.movement, combat: this.combat, inventory: this.inventory, onEvent: event => this.#emit(event.type, event) });
     this.agents = new AgentRuntime({
       onGoalChanged: (actorId, goal) => this.#emit('GOAL_CHANGED', { actorId, goal: goal.toJSON() }),
@@ -90,6 +95,7 @@ export class WorldRuntime {
     this.spawn.markDeaths(this.clock.minutes);
     this.spawn.evaluate(this.clock.minutes);
     this.population.tick(this.clock.minutes, minutes);
+    this.economy.tick(this.clock.minutes, minutes);
     this.worldEvents.evaluate(this.clock.minutes, event => { this.#emit('WORLD_EVENT', event); if (event.type === 'MARKET_DAY') this.resources.replenish(); });
     return this.#emit('WORLD_TICK', { minutes, version: this.state.version });
   }
