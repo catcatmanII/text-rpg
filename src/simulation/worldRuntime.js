@@ -18,6 +18,9 @@ import { ResourceRuntime } from '../world/resourceRuntime.js';
 import { resourceDefinitions } from '../content/resourceDefinitions.js';
 import { QuestRuntime } from '../quest/questRuntime.js';
 import { questDefinitions } from '../content/questDefinitions.js';
+import { SpawnRuntime } from '../world/spawnRuntime.js';
+import { spawnDefinitions } from '../content/spawnDefinitions.js';
+import { PopulationRuntime } from '../population/populationRuntime.js';
 
 export class WorldRuntime {
   constructor({ worldId = 'world_001', startMinutes = 0 } = {}) {
@@ -38,6 +41,8 @@ export class WorldRuntime {
     this.resources = new ResourceRuntime(resourceDefinitions);
     this.quests = new QuestRuntime(questDefinitions);
     this.worldEvents = new WorldEventScheduler(worldEventDefinitions);
+    this.spawn = new SpawnRuntime({ registry: this.entities, definitions: spawnDefinitions, createEntity: entity => entity, emit: event => this.#emit(event.type, event) });
+    this.population = new PopulationRuntime({ registry: this.entities, emit: event => this.#emit(event.type, event) });
     this.actionResolver = new ActionResolver({ movement: this.movement, combat: this.combat, inventory: this.inventory, onEvent: event => this.#emit(event.type, event) });
     this.agents = new AgentRuntime({
       onGoalChanged: (actorId, goal) => this.#emit('GOAL_CHANGED', { actorId, goal: goal.toJSON() }),
@@ -79,6 +84,9 @@ export class WorldRuntime {
     this.state.version += 1;
     this.agents.tick({ worldTime: this.clock.minutes, minutes, world: this });
     while (this.agents.actions.length) this.actionResolver.resolve(this.agents.actions.dequeue(), this);
+    this.spawn.markDeaths(this.clock.minutes);
+    this.spawn.evaluate(this.clock.minutes);
+    this.population.tick(this.clock.minutes, minutes);
     this.worldEvents.evaluate(this.clock.minutes, event => { this.#emit('WORLD_EVENT', event); if (event.type === 'MARKET_DAY') this.resources.replenish(); });
     return this.#emit('WORLD_TICK', { minutes, version: this.state.version });
   }

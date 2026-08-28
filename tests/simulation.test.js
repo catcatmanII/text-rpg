@@ -19,6 +19,9 @@ import { createMinimalWorld } from '../src/content/minimalWorld.js';
 import { WorldEventScheduler } from '../src/world/worldEventScheduler.js';
 import { ResourceRuntime } from '../src/world/resourceRuntime.js';
 import { QuestRuntime } from '../src/quest/questRuntime.js';
+import { SpawnRuntime } from '../src/world/spawnRuntime.js';
+import { PopulationRuntime } from '../src/population/populationRuntime.js';
+import { labelOf } from '../src/presentation/labels.js';
 
 test('world can start, tick, pause and resume', () => {
   const world = new WorldRuntime({ worldId: 'mvp', startMinutes: 360 });
@@ -172,7 +175,8 @@ test('minimal world survives 1000 ticks and continues after save/load', () => {
   restored.runTicks(500);
   assert.equal(restored.clock.minutes, 1360);
   assert.ok(restored.eventLog.events.length > 100);
-  assert.equal(restored.entities.get('hunter').exp, 20);
+  assert.ok(restored.entities.get('hunter').exp > 20);
+  assert.ok(restored.eventLog.events.some(event => event.type === 'ENTITY_RESPAWNED'));
 });
 
 test('world event scheduler emits each recurring event once per cycle', () => {
@@ -193,3 +197,18 @@ test('quest runtime tracks deterministic monster kill progress', () => {
   quests.progress(entity, { type: 'ENTITY_DIED', targetType: 'MONSTER' }); quests.progress(entity, { type: 'ENTITY_DIED', targetType: 'MONSTER' });
   assert.deepEqual(entity.quests.hunt, { progress: 2, completed: true });
 });
+
+test('spawn runtime respawns a dead monster after cooldown', () => {
+  const registry = new EntityRegistry({ old: { id: 'old', type: 'MONSTER', spawnId: 's', alive: false, deadAt: 10, maxHp: 6 } });
+  const spawned = []; const runtime = new SpawnRuntime({ registry, definitions: [{ id: 's', monsterType: 'goblin', maxAlive: 1, respawnMinutes: 30 }], createEntity: entity => entity, emit: event => spawned.push(event) });
+  runtime.evaluate(39); assert.equal(registry.all().filter(entity => entity.alive !== false).length, 0);
+  runtime.evaluate(40); assert.equal(registry.all().filter(entity => entity.alive !== false).length, 1); assert.equal(spawned[0].type, 'ENTITY_RESPAWNED');
+});
+
+test('population runtime creates a child and reports population statistics', () => {
+  const registry = new EntityRegistry(); const events = []; const population = new PopulationRuntime({ registry, emit: event => events.push(event) });
+  registry.add({ id: 'a', type: 'NPC', familyId: 'f', ageDays: 20, alive: true, location: { x: 0, y: 0 } }); registry.add({ id: 'b', type: 'NPC', familyId: 'f', ageDays: 21, alive: true, location: { x: 0, y: 0 } });
+  population.tick(1440); assert.equal(population.stats().alive, 3); assert.equal(events[0].type, 'NPC_BORN');
+});
+
+test('presentation exposes Traditional Chinese labels', () => { assert.equal(labelOf('MONSTER'), '怪物'); assert.equal(labelOf('NPC_BORN'), '居民出生'); });
