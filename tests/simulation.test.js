@@ -293,3 +293,14 @@ test('settlement owns food production and resource capacity', () => {
   world.settlement.addResource('wood', 999);
   assert.equal(world.settlement.resources.wood, 100);
 });
+
+test('residents contribute by profession and births respect housing', () => {
+  const world = createMinimalWorld();
+  world.step(60);
+  assert.ok(world.economy.contributions['woodcutter-a'].wood > 0);
+  assert.ok(world.economy.contributions['stonecutter-a'].stone > 0);
+  assert.ok(world.economy.contributions['healer-a'].medicine > 0);
+  const before = world.population.stats().alive;
+  world.runTicks(1440);
+  assert.equal(world.population.stats().alive, before);
+});

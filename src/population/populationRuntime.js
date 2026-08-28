@@ -1,5 +1,6 @@
 export class PopulationRuntime {
-  constructor({ registry, emit } = {}) { this.registry = registry; this.emit = emit; this.nextBirthAt = 1440; this.nextId = 1; }
+  constructor({ registry, settlement, emit } = {}) { this.registry = registry; this.settlement = settlement; this.emit = emit; this.nextBirthAt = 1440; this.nextId = 1; }
+  setSettlement(settlement) { this.settlement = settlement; }
   tick(worldTime, minutes = 1) {
     for (const entity of this.registry.all()) if (entity.type === 'NPC' && entity.alive !== false) {
       entity.ageDays = (entity.ageDays ?? 20) + minutes / 1440;
@@ -8,6 +9,7 @@ export class PopulationRuntime {
     if (worldTime >= this.nextBirthAt) { this.#tryBirth(worldTime); this.nextBirthAt += 1440; }
   }
   #tryBirth(worldTime) {
+    if (this.registry.byType('NPC').filter(entity => entity.alive !== false).length >= (this.settlement?.housing ?? Infinity)) { this.emit?.({ type: 'BIRTH_DEFERRED', reason: 'HOUSING_FULL' }); return; }
     const adults = this.registry.all().filter(entity => entity.type === 'NPC' && entity.alive !== false && (entity.ageDays ?? 20) >= 18 && entity.familyId);
     const family = adults.find(entity => adults.some(other => other.id !== entity.id && other.familyId === entity.familyId));
     if (!family) return;

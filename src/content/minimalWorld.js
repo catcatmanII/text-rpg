@@ -7,9 +7,10 @@ export function createMinimalWorld() {
   const world = new WorldRuntime({ worldId: 'minimal-world', startMinutes: 360 });
   for (const zone of minimalWorldData.zones) world.addZone(zone);
   world.setZoneStatus('village', 'ACTIVE'); world.setZoneStatus('hunt', 'ACTIVE');
-  const [player, hunter, ...monsters] = minimalWorldData.entities.map(entity => structuredClone(entity));
-  world.addEntity(player); world.registerAgent(hunter);
-  for (const monster of monsters) world.addEntity(monster);
+  const entities = minimalWorldData.entities.map(entity => structuredClone(entity));
+  const player = entities.find(entity => entity.type === 'PLAYER');
+  world.addEntity(player);
+  for (const entity of entities.filter(entity => entity.type !== 'PLAYER')) if (entity.type === 'NPC') world.registerAgent(entity); else world.addEntity(entity);
   const shop = new ShopRuntime(minimalWorldData.shop);
   world.actionResolver.supply = new SupplyService({ inventoryRuntime: world.inventory, shopRuntime: shop, quantity: 1 });
   world.quests.accept(world.entities.get('player'), 'goblin_hunter');

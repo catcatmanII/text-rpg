@@ -57,6 +57,7 @@ export class WorldRuntime {
     this.population = new PopulationRuntime({ registry: this.entities, emit: event => this.#emit(event.type, event) });
     this.interactions = new InteractionRuntime({ registry: this.entities, emit: event => this.#emit(event.type, event) });
     this.settlement = new SettlementRuntime({ emit: event => this.#emit(event.type, event), levels: settlementLevels });
+    this.population.setSettlement(this.settlement);
     this.economy = new EconomyRuntime({ registry: this.entities, inventory: this.inventory, settlement: this.settlement, emit: event => this.#emit(event.type, event), definitions: economyDefinitions });
     this.stats = new WorldStatsRuntime({ eventLog: this.eventLog, registry: this.entities });
     this.requests = new RequestRuntime({ registry: this.entities, economy: this.economy, settlement: this.settlement, emit: event => this.#emit(event.type, event) });

@@ -2,14 +2,15 @@ export class EconomyRuntime {
   constructor({ registry, inventory, settlement, emit, definitions = [] } = {}) {
     this.registry = registry; this.inventory = inventory; this.settlement = settlement; this.emit = emit;
     this.definitions = Object.fromEntries(definitions.map(definition => [definition.profession, definition]));
-    this.stock = {};
+    this.stock = {}; this.contributions = {};
   }
   tick(worldTime, minutes = 1) {
     for (const entity of this.registry.all()) {
       if (entity.type !== 'NPC' || entity.alive === false) continue;
       const definition = this.definitions[entity.profession];
       if (definition && entity.activity !== 'SLEEP' && entity.zoneId === definition.workZoneId) {
-        for (const [itemId, amount] of Object.entries(definition.production ?? {})) { if (itemId === 'food' && this.settlement) this.settlement.addResource('food', amount * minutes); else this.stock[itemId] = (this.stock[itemId] ?? 0) + amount * minutes; }
+        const efficiency = Math.max(0.5, Math.min(1.25, 1 + ((this.settlement?.morale ?? 50) - 50) / 200));
+        for (const [itemId, amount] of Object.entries(definition.production ?? {})) { const produced = amount * minutes * efficiency; if (itemId === 'food' && this.settlement) this.settlement.addResource('food', produced); else this.stock[itemId] = (this.stock[itemId] ?? 0) + produced; this.contributions[entity.id] ??= {}; this.contributions[entity.id][itemId] = (this.contributions[entity.id][itemId] ?? 0) + produced; }
         this.emit?.({ type: 'RESOURCE_PRODUCED', entityId: entity.id, profession: entity.profession, production: definition.production });
       }
       // 食物由 SettlementRuntime 按日配給；居民需求只做低頻提示，避免每分鐘重複扣糧。
@@ -17,6 +18,6 @@ export class EconomyRuntime {
     }
     this.emit?.({ type: 'ECONOMY_TICK', worldTime, stock: { ...this.stock } });
   }
-  snapshot() { return { stock: { ...this.stock } }; }
-  restore(snapshot = {}) { this.stock = { ...(snapshot.stock ?? {}) }; }
+  snapshot() { return { stock: { ...this.stock }, contributions: structuredClone(this.contributions) }; }
+  restore(snapshot = {}) { this.stock = { ...(snapshot.stock ?? {}) }; this.contributions = structuredClone(snapshot.contributions ?? {}); }
 }
