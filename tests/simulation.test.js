@@ -16,6 +16,9 @@ import { ReplayEngine } from '../src/events/replayEngine.js';
 import { PlayerCommandRouter } from '../src/player/playerCommandRouter.js';
 import { TextObserver } from '../src/presentation/textObserver.js';
 import { createMinimalWorld } from '../src/content/minimalWorld.js';
+import { WorldEventScheduler } from '../src/world/worldEventScheduler.js';
+import { ResourceRuntime } from '../src/world/resourceRuntime.js';
+import { QuestRuntime } from '../src/quest/questRuntime.js';
 
 test('world can start, tick, pause and resume', () => {
   const world = new WorldRuntime({ worldId: 'mvp', startMinutes: 360 });
@@ -170,4 +173,23 @@ test('minimal world survives 1000 ticks and continues after save/load', () => {
   assert.equal(restored.clock.minutes, 1360);
   assert.ok(restored.eventLog.events.length > 100);
   assert.equal(restored.entities.get('hunter').exp, 20);
+});
+
+test('world event scheduler emits each recurring event once per cycle', () => {
+  const events = []; const scheduler = new WorldEventScheduler([{ id: 'market', type: 'MARKET_DAY', interval: 10 }]);
+  scheduler.evaluate(10, event => events.push(event)); scheduler.evaluate(10, event => events.push(event)); scheduler.evaluate(20, event => events.push(event));
+  assert.deepEqual(events.map(event => event.cycle), [1, 2]);
+});
+
+test('resource nodes deplete and replenish without external AI', () => {
+  const resources = new ResourceRuntime([{ id: 'herb', itemId: 'herb', amount: 1 }]); const entity = { inventory: {} };
+  assert.equal(resources.gather(entity, 'herb').ok, true); assert.equal(resources.gather(entity, 'herb').ok, false);
+  resources.replenish(); assert.equal(resources.gather(entity, 'herb').ok, true);
+});
+
+test('quest runtime tracks deterministic monster kill progress', () => {
+  const quests = new QuestRuntime([{ id: 'hunt', goalEvent: 'ENTITY_DIED', targetType: 'MONSTER', required: 2 }]); const entity = {};
+  assert.equal(quests.accept(entity, 'hunt').ok, true);
+  quests.progress(entity, { type: 'ENTITY_DIED', targetType: 'MONSTER' }); quests.progress(entity, { type: 'ENTITY_DIED', targetType: 'MONSTER' });
+  assert.deepEqual(entity.quests.hunt, { progress: 2, completed: true });
 });

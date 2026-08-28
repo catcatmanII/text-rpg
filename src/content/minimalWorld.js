@@ -12,6 +12,7 @@ export function createMinimalWorld() {
   for (const monster of monsters) world.addEntity(monster);
   const shop = new ShopRuntime(minimalWorldData.shop);
   world.actionResolver.supply = new SupplyService({ inventoryRuntime: world.inventory, shopRuntime: shop, quantity: 1 });
+  world.quests.accept(world.entities.get('player'), 'goblin_hunter');
   world.start(); world.setGoal('hunter', { type: 'HUNT', priority: 50, reason: 'routine' });
   return world;
 }
