@@ -357,3 +357,32 @@ test('mobile presentation has viewport, tab navigation and touch controls', () =
   assert.match(html, /viewport-fit=cover/); assert.match(html, /data-tab="town"/); assert.match(html, /id="event-center"/);
   assert.match(css, /\.bottom-nav/); assert.match(css, /min-height: 44px/); assert.match(css, /@media \(min-width: 700px\)/);
 });
+
+test('development paths create distinct strategies and persist after save/load', () => {
+  const agriculture = createMinimalWorld(); const military = createMinimalWorld();
+  assert.equal(agriculture.chooseDevelopmentPath('AGRICULTURAL').ok, true);
+  assert.equal(military.chooseDevelopmentPath('MILITARY').ok, true);
+  agriculture.step(60); military.step(60);
+  assert.ok(agriculture.settlement.capacities.food > military.settlement.capacities.food);
+  agriculture.step(1380); military.step(1380);
+  assert.ok(military.threat.pressure < agriculture.threat.pressure);
+  const restored = loadWorld(saveWorld(military));
+  assert.equal(restored.developmentPath.selected, 'MILITARY');
+  assert.equal(restored.threat.pressure, military.threat.pressure);
+});
+
+test('new residents are registered as autonomous agents', () => {
+  const world = createMinimalWorld();
+  world.population.addNewcomers(1, world.clock.minutes);
+  const newcomer = world.entities.all().find(entity => entity.id.startsWith('npc-newcomer-'));
+  assert.ok(newcomer); assert.equal(world.agents.scheduler.agents.has(newcomer.id), true);
+});
+
+test('active events and scheduled world state survive save/load', () => {
+  const world = createMinimalWorld(); world.chooseDevelopmentPath('COMMERCIAL'); world.step(1080);
+  const saved = loadWorld(saveWorld(world));
+  assert.equal(saved.currentEvent().id, world.currentEvent().id);
+  assert.equal(saved.developmentPath.selected, 'COMMERCIAL');
+  saved.resolveEvent('ignore'); world.resolveEvent('ignore');
+  assert.equal(saved.eventLog.events.filter(event => event.type === 'DECISION_EVENT_OFFERED').length, 1);
+});

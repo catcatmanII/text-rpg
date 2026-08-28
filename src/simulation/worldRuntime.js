@@ -39,6 +39,8 @@ import { DecisionEventRuntime } from '../world/decisionEventRuntime.js';
 import { decisionEventDefinitions } from '../content/decisionEventDefinitions.js';
 import { ResidentEventRuntime } from '../interaction/residentEventRuntime.js';
 import { residentEventDefinitions } from '../content/residentEventDefinitions.js';
+import { DevelopmentPathRuntime } from '../settlement/developmentPathRuntime.js';
+import { developmentPathDefinitions } from '../content/developmentPathDefinitions.js';
 
 export class WorldRuntime {
   constructor({ worldId = 'world_001', startMinutes = 0 } = {}) {
@@ -60,16 +62,17 @@ export class WorldRuntime {
     this.quests = new QuestRuntime(questDefinitions);
     this.worldEvents = new WorldEventScheduler(worldEventDefinitions);
     this.spawn = new SpawnRuntime({ registry: this.entities, definitions: spawnDefinitions, createEntity: entity => entity, emit: event => this.#emit(event.type, event) });
-    this.population = new PopulationRuntime({ registry: this.entities, emit: event => this.#emit(event.type, event) });
+    this.population = new PopulationRuntime({ registry: this.entities, emit: event => this.#emit(event.type, event), onAdded: entity => this.agents?.register(entity.id) });
     this.interactions = new InteractionRuntime({ registry: this.entities, emit: event => this.#emit(event.type, event) });
     this.settlement = new SettlementRuntime({ emit: event => this.#emit(event.type, event), levels: settlementLevels });
     this.buildings = new BuildingRuntime({ settlement: this.settlement, definitions: buildingDefinitions, emit: event => this.#emit(event.type, event) });
+    this.developmentPath = new DevelopmentPathRuntime({ settlement: this.settlement, definitions: developmentPathDefinitions, emit: event => this.#emit(event.type, event) });
     this.population.setSettlement(this.settlement);
-    this.threat = new ThreatRuntime({ registry: this.entities, settlement: this.settlement, buildings: this.buildings, emit: event => this.#emit(event.type, event) });
-    this.economy = new EconomyRuntime({ registry: this.entities, inventory: this.inventory, settlement: this.settlement, buildings: this.buildings, emit: event => this.#emit(event.type, event), definitions: economyDefinitions });
+    this.threat = new ThreatRuntime({ registry: this.entities, settlement: this.settlement, buildings: this.buildings, developmentPath: this.developmentPath, emit: event => this.#emit(event.type, event) });
+    this.economy = new EconomyRuntime({ registry: this.entities, inventory: this.inventory, settlement: this.settlement, buildings: this.buildings, developmentPath: this.developmentPath, emit: event => this.#emit(event.type, event), definitions: economyDefinitions });
     this.stats = new WorldStatsRuntime({ eventLog: this.eventLog, registry: this.entities });
     this.requests = new RequestRuntime({ registry: this.entities, economy: this.economy, settlement: this.settlement, emit: event => this.#emit(event.type, event) });
-    this.causality = new CausalityRuntime({ registry: this.entities, economy: this.economy, settlement: this.settlement, buildings: this.buildings, threat: this.threat, emit: event => this.#emit(event.type, event) });
+    this.causality = new CausalityRuntime({ registry: this.entities, economy: this.economy, settlement: this.settlement, buildings: this.buildings, developmentPath: this.developmentPath, threat: this.threat, emit: event => this.#emit(event.type, event) });
     this.decisionEvents = new DecisionEventRuntime({ settlement: this.settlement, registry: this.entities, population: this.population, emit: event => this.#emit(event.type, event), definitions: decisionEventDefinitions });
     this.residentEvents = new ResidentEventRuntime({ settlement: this.settlement, registry: this.entities, emit: event => this.#emit(event.type, event), definitions: residentEventDefinitions });
     this.energy = new PlayerEnergyRuntime({ registry: this.entities, emit: event => this.#emit(event.type, event) });
@@ -108,6 +111,7 @@ export class WorldRuntime {
   acceptResidentRequest(actorId, targetId) { return this.interactions.acceptRequest(actorId, targetId); }
   startActivity(activityId, playerId = 'player') { return this.activities.start(playerId, activityId); }
   build(buildingId, playerId = 'player') { return this.buildings.build(buildingId, playerId); }
+  chooseDevelopmentPath(pathId, playerId = 'player') { return this.developmentPath.choose(pathId, playerId); }
   evaluateRequests() { this.requests.evaluate(this.clock.minutes); }
   currentEvent() { return this.decisionEvents.current(); }
   resolveEvent(optionId, playerId = 'player') { return this.decisionEvents.resolve(optionId, playerId, this.clock.minutes); }
@@ -147,7 +151,7 @@ export class WorldRuntime {
     return this.snapshot();
   }
 
-  snapshot() { return structuredClone({ worldId: this.worldId, mode: this.mode, state: this.state.toJSON(), agents: this.agents.snapshot(), events: this.eventLog.toJSON(), settlement: this.settlement.snapshot(), economy: this.economy.snapshot(), buildings: this.buildings.snapshot(), threat: this.threat.snapshot(), decisionEvents: this.decisionEvents.snapshot(), residentEvents: this.residentEvents.snapshot() }); }
+  snapshot() { return structuredClone({ worldId: this.worldId, mode: this.mode, state: this.state.toJSON(), agents: this.agents.snapshot(), events: this.eventLog.toJSON(), settlement: this.settlement.snapshot(), economy: this.economy.snapshot(), buildings: this.buildings.snapshot(), developmentPath: this.developmentPath.snapshot(), threat: this.threat.snapshot(), decisionEvents: this.decisionEvents.snapshot(), residentEvents: this.residentEvents.snapshot(), population: this.population.snapshot(), activities: this.activities.snapshot(), spawn: this.spawn.snapshot(), resources: this.resources.snapshot(), worldEvents: this.worldEvents.snapshot() }); }
 
   #emit(type, payload = {}) { return this.eventLog.append({ worldTime: this.clock.minutes, type, payload }); }
 
@@ -169,14 +173,17 @@ export class WorldRuntime {
     runtime.agents.restore(snapshot.agents);
     runtime.spawn.registry = runtime.entities;
     runtime.threat.registry = runtime.entities;
+    runtime.economy.developmentPath = runtime.developmentPath; runtime.causality.developmentPath = runtime.developmentPath; runtime.threat.developmentPath = runtime.developmentPath;
     runtime.population.registry = runtime.entities; runtime.population.setSettlement(runtime.settlement);
     runtime.interactions.registry = runtime.entities;
     runtime.economy.registry = runtime.entities; runtime.requests.registry = runtime.entities; runtime.requests.settlement = runtime.settlement;
     runtime.causality.registry = runtime.entities; runtime.causality.settlement = runtime.settlement;
     runtime.stats.registry = runtime.entities;
     runtime.settlement.restore(snapshot.settlement); runtime.economy.restore(snapshot.economy); runtime.buildings.restore(snapshot.buildings); runtime.threat.restore(snapshot.threat);
+    runtime.developmentPath.restore(snapshot.developmentPath);
     runtime.decisionEvents.restore(snapshot.decisionEvents);
     runtime.residentEvents.registry = runtime.entities; runtime.residentEvents.restore(snapshot.residentEvents);
+    runtime.population.restore(snapshot.population); runtime.activities.restore(snapshot.activities); runtime.spawn.restore(snapshot.spawn); runtime.resources.restore(snapshot.resources); runtime.worldEvents.restore(snapshot.worldEvents);
     runtime.interactions = new InteractionRuntime({ registry: runtime.entities, emit: event => runtime.#emit(event.type, event) });
     for (const entity of runtime.entities.byType('NPC').concat(runtime.entities.byType('PLAYER'))) runtime.agents.register(entity.id);
     return runtime;

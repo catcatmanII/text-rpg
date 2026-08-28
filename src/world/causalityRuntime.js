@@ -1,9 +1,9 @@
 export class CausalityRuntime {
-  constructor({ registry, economy, settlement, buildings, threat, emit } = {}) { this.registry = registry; this.economy = economy; this.settlement = settlement; this.buildings = buildings; this.threat = threat; this.emit = emit; }
+  constructor({ registry, economy, settlement, buildings, developmentPath, threat, emit } = {}) { this.registry = registry; this.economy = economy; this.settlement = settlement; this.buildings = buildings; this.developmentPath = developmentPath; this.threat = threat; this.emit = emit; }
   tick(worldTime) {
     const monsters = this.registry.all().filter(entity => entity.type === 'MONSTER' && entity.alive !== false).length;
     const guards = this.registry.all().filter(entity => entity.profession === 'GUARD' && entity.alive !== false).length;
-    const effects = this.buildings?.effects() ?? {};
+    const effects = { ...(this.buildings?.effects() ?? {}), ...(this.developmentPath?.effects() ?? {}) };
     const safety = Math.max(0, Math.min(100, 100 - monsters * 12 + guards * 5 + (effects.safety ?? 0) - Math.floor((this.threat?.pressure ?? 0) / 5)));
     this.settlement.safety = safety;
     for (const resident of this.registry.all().filter(entity => entity.type === 'NPC' && entity.alive !== false)) {

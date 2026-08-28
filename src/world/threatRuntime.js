@@ -1,13 +1,14 @@
 export class ThreatRuntime {
-  constructor({ registry, settlement, buildings, emit, interval = 1440 } = {}) { this.registry = registry; this.settlement = settlement; this.buildings = buildings; this.emit = emit; this.interval = interval; this.lastCycle = -1; this.pressure = 0; this.zoneThreat = { hunt: 0 }; }
+  constructor({ registry, settlement, buildings, developmentPath, emit, interval = 1440 } = {}) { this.registry = registry; this.settlement = settlement; this.buildings = buildings; this.developmentPath = developmentPath; this.emit = emit; this.interval = interval; this.lastCycle = -1; this.pressure = 0; this.zoneThreat = { hunt: 0 }; }
   tick(worldTime) {
     const cycle = Math.floor(worldTime / this.interval);
     if (cycle <= this.lastCycle) return;
     this.lastCycle = cycle;
     const level = this.settlement?.level ?? 1;
     const intensity = Math.max(0, cycle) + Math.max(0, level - 1);
-    const reduction = this.buildings?.effects().threatReduction ?? 0;
-    this.pressure = Math.max(0, Math.min(100, this.pressure + 8 + level * 2 - reduction * 4));
+    const reduction = (this.buildings?.effects().threatReduction ?? 0) + (this.developmentPath?.effects().threatReduction ?? 0);
+    const increase = this.developmentPath?.effects().threatIncrease ?? 0;
+    this.pressure = Math.max(0, Math.min(100, this.pressure + 8 + level * 2 - reduction * 4 + increase));
     this.zoneThreat.hunt = this.pressure;
     for (const monster of this.registry.all().filter(entity => entity.type === 'MONSTER' && entity.alive !== false)) {
       monster.threatLevel = intensity + 1;

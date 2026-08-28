@@ -1,6 +1,6 @@
 export class EconomyRuntime {
-  constructor({ registry, inventory, settlement, buildings, emit, definitions = [] } = {}) {
-    this.registry = registry; this.inventory = inventory; this.settlement = settlement; this.buildings = buildings; this.emit = emit;
+  constructor({ registry, inventory, settlement, buildings, developmentPath, emit, definitions = [] } = {}) {
+    this.registry = registry; this.inventory = inventory; this.settlement = settlement; this.buildings = buildings; this.developmentPath = developmentPath; this.emit = emit;
     this.definitions = Object.fromEntries(definitions.map(definition => [definition.profession, definition]));
     this.stock = {}; this.contributions = {};
   }
@@ -9,9 +9,9 @@ export class EconomyRuntime {
       if (entity.type !== 'NPC' || entity.alive === false) continue;
       const definition = this.definitions[entity.profession];
       if (definition && entity.activity !== 'SLEEP' && entity.zoneId === definition.workZoneId) {
-        const effects = this.buildings?.effects() ?? {};
+        const effects = { ...(this.buildings?.effects() ?? {}), ...(this.developmentPath?.effects() ?? {}) };
         const efficiency = Math.max(0.5, Math.min(1.25, 1 + ((this.settlement?.morale ?? 50) - 50) / 200));
-        for (const [itemId, amount] of Object.entries(definition.production ?? {})) { const multiplier = itemId === 'food' ? 1 + (effects.foodMultiplier ?? 0) : itemId === 'wood' ? 1 + (effects.woodMultiplier ?? 0) : itemId === 'medicine' ? 1 + (effects.medicineMultiplier ?? 0) : 1; const produced = amount * minutes * efficiency * multiplier; if (this.settlement && itemId in this.settlement.resources) this.settlement.addResource(itemId, produced); else this.stock[itemId] = (this.stock[itemId] ?? 0) + produced; this.contributions[entity.id] ??= {}; this.contributions[entity.id][itemId] = (this.contributions[entity.id][itemId] ?? 0) + produced; }
+        for (const [itemId, amount] of Object.entries(definition.production ?? {})) { const multiplier = itemId === 'food' ? 1 + (effects.foodMultiplier ?? 0) : itemId === 'wood' ? 1 + (effects.woodMultiplier ?? 0) : itemId === 'medicine' ? 1 + (effects.medicineMultiplier ?? 0) : itemId === 'meat' ? 1 + (effects.meatMultiplier ?? 0) : 1; const produced = amount * minutes * efficiency * multiplier; if (this.settlement && itemId in this.settlement.resources) this.settlement.addResource(itemId, produced); else this.stock[itemId] = (this.stock[itemId] ?? 0) + produced; this.contributions[entity.id] ??= {}; this.contributions[entity.id][itemId] = (this.contributions[entity.id][itemId] ?? 0) + produced; }
         this.emit?.({ type: 'RESOURCE_PRODUCED', entityId: entity.id, profession: entity.profession, production: definition.production });
       }
       // 食物由 SettlementRuntime 按日配給；居民需求只做低頻提示，避免每分鐘重複扣糧。
