@@ -1,0 +1,173 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { WorldRuntime, saveWorld, loadWorld } from '../src/index.js';
+import { EntityRegistry } from '../src/world/entityRegistry.js';
+import { ZoneRuntime } from '../src/world/zoneRuntime.js';
+import { SpatialQuery } from '../src/world/spatialQuery.js';
+import { PathService } from '../src/movement/pathService.js';
+import { MovementRuntime } from '../src/movement/movementRuntime.js';
+import { LocalSearch } from '../src/movement/localSearch.js';
+import { CombatRuntime } from '../src/combat/combatRuntime.js';
+import { TargetSelector } from '../src/combat/targetSelector.js';
+import { InventoryRuntime } from '../src/economy/inventoryRuntime.js';
+import { ShopRuntime } from '../src/economy/shopRuntime.js';
+import { SupplyService } from '../src/economy/supplyService.js';
+import { ReplayEngine } from '../src/events/replayEngine.js';
+import { PlayerCommandRouter } from '../src/player/playerCommandRouter.js';
+import { TextObserver } from '../src/presentation/textObserver.js';
+import { createMinimalWorld } from '../src/content/minimalWorld.js';
+
+test('world can start, tick, pause and resume', () => {
+  const world = new WorldRuntime({ worldId: 'mvp', startMinutes: 360 });
+  world.start();
+  world.step();
+  world.pause();
+  world.step(5);
+  world.resume();
+  assert.equal(world.clock.minutes, 366);
+  assert.equal(world.state.version, 2);
+  assert.deepEqual(world.eventLog.events.map(e => e.type), ['WORLD_STARTED', 'WORLD_TICK', 'WORLD_PAUSED', 'WORLD_TICK', 'WORLD_RESUMED']);
+});
+
+test('world snapshot can be saved and loaded', () => {
+  const original = new WorldRuntime({ worldId: 'persisted', startMinutes: 60 });
+  original.start();
+  original.step(10);
+  const restored = loadWorld(saveWorld(original));
+  assert.deepEqual(restored.snapshot(), original.snapshot());
+});
+
+test('world rejects stepping before it starts', () => {
+  const world = new WorldRuntime();
+  assert.throws(() => world.step(), /running or paused/);
+});
+
+test('entities and zones support deterministic spatial queries', () => {
+  const registry = new EntityRegistry();
+  registry.add({ id: 'player', type: 'PLAYER', zoneId: 'village', location: { x: 0, y: 0 } });
+  registry.add({ id: 'npc-1', type: 'NPC', zoneId: 'village', location: { x: 2, y: 0 } });
+  registry.add({ id: 'monster-1', type: 'MONSTER', zoneId: 'hunt', location: { x: 1, y: 1 } });
+  const zones = new ZoneRuntime();
+  zones.add({ id: 'village', name: 'Village' });
+  zones.add({ id: 'hunt', name: 'Hunting Area' });
+  zones.setStatus('village', 'ACTIVE');
+  const query = new SpatialQuery(registry);
+  assert.deepEqual(query.within({ x: 0, y: 0 }, 2.1, { zoneId: 'village', excludeId: 'player' }).map(e => e.id), ['npc-1']);
+  assert.deepEqual(query.inZone('village').map(e => e.id), ['player', 'npc-1']);
+  assert.equal(zones.require('village').status, 'ACTIVE');
+});
+
+test('runtime entity and zone changes are included in snapshots', () => {
+  const world = new WorldRuntime({ worldId: 'entities' });
+  world.addZone({ id: 'village', name: 'Village' });
+  world.setZoneStatus('village', 'ACTIVE');
+  world.addEntity({ id: 'npc-1', type: 'NPC', zoneId: 'village', location: { x: 1, y: 1 } });
+  const restored = loadWorld(saveWorld(world));
+  assert.equal(restored.entities.get('npc-1').type, 'NPC');
+  assert.equal(restored.zones.require('village').status, 'ACTIVE');
+});
+
+test('registered agents receive deterministic actions from goals on each tick', () => {
+  const world = new WorldRuntime({ worldId: 'agents' });
+  world.start();
+  world.registerAgent({ id: 'npc-b', type: 'NPC', location: { x: 0, y: 0 } });
+  world.registerAgent({ id: 'npc-a', type: 'NPC', location: { x: 0, y: 0 } });
+  world.setGoal('npc-b', { type: 'HUNT', priority: 10, reason: 'routine' });
+  world.setGoal('npc-a', { type: 'RETURN', priority: 5, reason: 'safety' });
+  world.step();
+  assert.deepEqual(world.eventLog.events.filter(event => event.type === 'ACTION_CREATED').map(event => [event.payload.actorId, event.payload.payload.goal]), [['npc-a', 'RETURN'], ['npc-b', 'HUNT']]);
+});
+
+test('agents autonomously choose recovery and supply goals from needs', () => {
+  const world = new WorldRuntime({ worldId: 'needs' });
+  world.start();
+  world.registerAgent({ id: 'npc-1', type: 'NPC', autonomous: true, hp: 10, maxHp: 100, supplies: 5, needs: { fatigue: 0, hunger: 0, safety: 100 }, location: { x: 0, y: 0 } });
+  world.step();
+  assert.equal(world.agents.goals.current('npc-1').type, 'RECOVER');
+});
+
+test('movement advances one deterministic walkable step', () => {
+  const movement = new MovementRuntime({ pathService: new PathService({ isWalkable: point => point.x !== 1 }) });
+  const entity = { id: 'npc', location: { x: 0, y: 0 } };
+  assert.equal(movement.moveToward(entity, { x: 2, y: 0 }), false);
+  assert.deepEqual(entity.location, { x: 0, y: 0 });
+  assert.equal(movement.moveToward(entity, { x: 0, y: 2 }), true);
+  assert.deepEqual(entity.location, { x: 0, y: 1 });
+});
+
+test('local search has deterministic target and exhaustion results', () => {
+  const search = new LocalSearch({ candidates: [{ id: 'dead' }, { id: 'live' }], isValid: item => item.id === 'live' });
+  assert.deepEqual(search.next(), { result: 'TARGET_FOUND', target: { id: 'live' } });
+  assert.deepEqual(search.next(), { result: 'AREA_EXHAUSTED', target: null });
+});
+
+test('combat resolves damage, death and rewards without LLM', () => {
+  const events = [];
+  const combat = new CombatRuntime({ onEvent: event => events.push(event) });
+  const attacker = { id: 'player', attack: 5, hp: 20, exp: 0, gold: 0 };
+  const monster = { id: 'goblin', hp: 4, defense: 1, rewards: { exp: 10, gold: 3 } };
+  assert.deepEqual(combat.attack(attacker, monster), { ok: true, damage: 4, defeated: true });
+  assert.equal(attacker.exp, 10);
+  assert.equal(attacker.gold, 3);
+  assert.deepEqual(events.map(event => event.type), ['DAMAGE_APPLIED', 'ENTITY_DIED']);
+});
+
+test('target selection is nearest then stable by id', () => {
+  const selector = new TargetSelector();
+  const source = { location: { x: 0, y: 0 } };
+  const targets = [{ id: 'b', alive: true, location: { x: 1, y: 0 } }, { id: 'a', alive: true, location: { x: 0, y: 1 } }];
+  assert.equal(selector.nearest(source, targets).id, 'a');
+});
+
+test('inventory, shop and supply form a deterministic economy loop', () => {
+  const inventory = new InventoryRuntime();
+  const shop = new ShopRuntime({ inventory: { potion: 5 }, prices: { potion: 2 } });
+  const service = new SupplyService({ inventoryRuntime: inventory, shopRuntime: shop, quantity: 2 });
+  const actor = { id: 'npc', gold: 10, inventory: {} };
+  const result = service.execute(actor);
+  assert.deepEqual(result, { ok: true, total: 4 });
+  assert.equal(inventory.count(actor, 'potion'), 2);
+  assert.equal(actor.gold, 6);
+  assert.equal(shop.inventory.potion, 3);
+  assert.equal(service.execute(actor).changed, false);
+});
+
+test('save schema and replay preserve a traceable world history', () => {
+  const world = new WorldRuntime({ worldId: 'replay', startMinutes: 10 });
+  world.start(); world.step(2); world.pause();
+  const replay = new ReplayEngine({ initialSnapshot: world.snapshot(), events: world.eventLog.events });
+  assert.equal(replay.count('WORLD_TICK'), 1);
+  assert.equal(replay.verifyMonotonicTime(), true);
+  assert.equal(JSON.parse(saveWorld(world)).schemaVersion, 1);
+  assert.equal(loadWorld(saveWorld(world)).clock.minutes, 12);
+});
+
+test('player commands are validated at the boundary and observer is read-only', () => {
+  const world = new WorldRuntime({ worldId: 'player' });
+  world.registerAgent({ id: 'player', type: 'PLAYER', location: { x: 0, y: 0 } });
+  const router = new PlayerCommandRouter({ world, playerId: 'player' });
+  assert.equal(router.dispatch('move 3 4').destination.x, 3);
+  assert.throws(() => router.dispatch('teleport 9 9'), /Unknown player command/);
+  const view = new TextObserver().describe(world);
+  assert.equal(view.entities[0].id, 'player');
+  assert.match(new TextObserver().render(world), /World player/);
+});
+
+test('minimal world runs autonomously without LLM', () => {
+  const world = createMinimalWorld();
+  for (let index = 0; index < 10; index += 1) world.step();
+  assert.equal(world.clock.minutes, 370);
+  assert.ok(world.eventLog.events.some(event => event.type === 'DAMAGE_APPLIED'));
+  assert.ok(world.eventLog.events.some(event => event.type === 'ENTITY_DIED'));
+  assert.ok(world.entities.get('hunter').exp > 0);
+});
+
+test('minimal world survives 1000 ticks and continues after save/load', () => {
+  const world = createMinimalWorld();
+  world.runTicks(500);
+  const restored = loadWorld(saveWorld(world));
+  restored.runTicks(500);
+  assert.equal(restored.clock.minutes, 1360);
+  assert.ok(restored.eventLog.events.length > 100);
+  assert.equal(restored.entities.get('hunter').exp, 20);
+});
