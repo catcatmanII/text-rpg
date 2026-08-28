@@ -259,6 +259,13 @@ test('player activities consume energy, show progress and increase settlement pr
   assert.equal(activities.tick(2).status, 'COMPLETED'); assert.equal(settlement.prosperity, 8); settlement.tick({ population: 1 }); assert.equal(settlement.level, 2);
 });
 
+test('prosperity does not passively decay, only sustained shortage can reduce it', () => {
+  const settlement = new SettlementRuntime({ levels: [] }); settlement.prosperity = 20;
+  settlement.tick({ population: 1 }); assert.equal(settlement.prosperity, 20);
+  for (let index = 0; index < 58; index += 1) settlement.tick({ population: 1 }); assert.equal(settlement.prosperity, 20);
+  settlement.tick({ population: 1 }); assert.equal(settlement.prosperity, 19);
+});
+
 test('minimal world exposes player energy and settlement state', () => {
   const world = createMinimalWorld();
   assert.equal(world.entities.get('player').energy, undefined);

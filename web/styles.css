@@ -7,7 +7,7 @@ h1, h2, p { margin-top: 0; } h1 { margin-bottom: 6px; font-size: clamp(2rem, 5vw
 h2 { font-size: 1rem; color: #93c5fd; } .eyebrow { margin-bottom: 8px; color: #60a5fa; font-size: .75rem; letter-spacing: .18em; }
 .muted { color: #9ca3af; } .status { border: 1px solid #334155; border-radius: 999px; padding: 8px 14px; white-space: nowrap; }
 .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
-button { border: 0; border-radius: 8px; background: #2563eb; color: white; cursor: pointer; padding: 10px 15px; font: inherit; }
+button { min-height: 44px; border: 0; border-radius: 8px; background: #2563eb; color: white; cursor: pointer; padding: 10px 15px; font: inherit; touch-action: manipulation; }
 button:hover { background: #3b82f6; } #reset { background: #475569; }
 .dashboard { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .card { min-height: 160px; border: 1px solid #334155; border-radius: 14px; background: rgba(15, 23, 42, .82); padding: 18px; box-shadow: 0 10px 30px rgba(0,0,0,.15); }

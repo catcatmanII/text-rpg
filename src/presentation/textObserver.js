@@ -10,6 +10,7 @@ export class TextObserver {
       ...view.entities.map(entity => `${entity.id} [${labelOf(entity.type)}] 區域=${entity.zoneId ?? '-'} 生命=${entity.hp ?? '-'} 目標=${labelOf(entity.goal)}`),
       `人口：${view.population?.alive ?? 0}（幼年 ${view.population?.children ?? 0}）`,
       `世界統計：出生 ${view.statistics?.births ?? 0}／死亡 ${view.statistics?.deaths ?? 0}／重生 ${view.statistics?.respawns ?? 0}／交談 ${view.statistics?.interactions ?? 0}`,
+      `村落評估：繁榮度 ${view.economy?.prosperity ?? 0}（只因持續性負面事件下降）`,
       ...view.recentEvents.map(event => `@${event.worldTime} ${labelOf(event.type)}`)].join('\n');
   }
 }

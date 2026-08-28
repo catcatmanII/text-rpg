@@ -18,6 +18,7 @@ export class ActivityRuntime {
   #complete() {
     const completed = this.active; const definition = this.definitions[completed.activityId];
     this.settlement.applyActivityReward(definition.rewards, completed.activityId);
+    const player = this.registry.get(completed.playerId); player.completedActivities ??= []; player.completedActivities.push(completed.activityId);
     this.emit?.({ type: 'ACTIVITY_COMPLETED', playerId: completed.playerId, activityId: completed.activityId, rewards: definition.rewards });
     this.active = null;
     return { status: 'COMPLETED', rewards: definition.rewards };
