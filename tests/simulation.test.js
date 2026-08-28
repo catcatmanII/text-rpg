@@ -22,6 +22,7 @@ import { QuestRuntime } from '../src/quest/questRuntime.js';
 import { SpawnRuntime } from '../src/world/spawnRuntime.js';
 import { PopulationRuntime } from '../src/population/populationRuntime.js';
 import { labelOf } from '../src/presentation/labels.js';
+import { InteractionRuntime } from '../src/interaction/interactionRuntime.js';
 
 test('world can start, tick, pause and resume', () => {
   const world = new WorldRuntime({ worldId: 'mvp', startMinutes: 360 });
@@ -201,8 +202,9 @@ test('quest runtime tracks deterministic monster kill progress', () => {
 test('spawn runtime respawns a dead monster after cooldown', () => {
   const registry = new EntityRegistry({ old: { id: 'old', type: 'MONSTER', spawnId: 's', alive: false, deadAt: 10, maxHp: 6 } });
   const spawned = []; const runtime = new SpawnRuntime({ registry, definitions: [{ id: 's', monsterType: 'goblin', maxAlive: 1, respawnMinutes: 30 }], createEntity: entity => entity, emit: event => spawned.push(event) });
+  runtime.markDeaths(10); assert.equal(registry.all().length, 0);
   runtime.evaluate(39); assert.equal(registry.all().filter(entity => entity.alive !== false).length, 0);
-  runtime.evaluate(40); assert.equal(registry.all().filter(entity => entity.alive !== false).length, 1); assert.equal(spawned[0].type, 'ENTITY_RESPAWNED');
+  runtime.evaluate(40); assert.equal(registry.all().filter(entity => entity.alive !== false).length, 1); assert.equal(spawned.at(-1).type, 'ENTITY_RESPAWNED');
 });
 
 test('population runtime creates a child and reports population statistics', () => {
@@ -212,3 +214,17 @@ test('population runtime creates a child and reports population statistics', () 
 });
 
 test('presentation exposes Traditional Chinese labels', () => { assert.equal(labelOf('MONSTER'), '怪物'); assert.equal(labelOf('NPC_BORN'), '居民出生'); });
+
+test('dead monsters are removed from world entities and later respawn', () => {
+  const registry = new EntityRegistry({ goblin: { id: 'goblin', type: 'MONSTER', spawnId: 's', alive: false, maxHp: 6 } }); const events = [];
+  const runtime = new SpawnRuntime({ registry, definitions: [{ id: 's', monsterType: 'goblin', maxAlive: 1, respawnMinutes: 10 }], createEntity: entity => entity, emit: event => events.push(event) });
+  runtime.markDeaths(5); assert.equal(registry.get('goblin'), undefined); assert.equal(events[0].type, 'ENTITY_REMOVED');
+  runtime.evaluate(14); assert.equal(registry.all().length, 0); runtime.evaluate(15); assert.equal(registry.all().length, 1);
+});
+
+test('player can talk to a resident and relationship changes deterministically', () => {
+  const registry = new EntityRegistry({ player: { id: 'player', type: 'PLAYER' }, resident: { id: 'resident', type: 'NPC', name: '居民', dialogue: '早安。' } });
+  const events = []; const interaction = new InteractionRuntime({ registry, emit: event => events.push(event) });
+  assert.deepEqual(interaction.talk('player', 'resident'), { ok: true, reply: '早安。', relationship: 1 });
+  assert.equal(registry.get('player').relationships.resident, 1); assert.equal(events[0].type, 'TALKED');
+});

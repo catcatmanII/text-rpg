@@ -21,6 +21,7 @@ import { questDefinitions } from '../content/questDefinitions.js';
 import { SpawnRuntime } from '../world/spawnRuntime.js';
 import { spawnDefinitions } from '../content/spawnDefinitions.js';
 import { PopulationRuntime } from '../population/populationRuntime.js';
+import { InteractionRuntime } from '../interaction/interactionRuntime.js';
 
 export class WorldRuntime {
   constructor({ worldId = 'world_001', startMinutes = 0 } = {}) {
@@ -43,6 +44,7 @@ export class WorldRuntime {
     this.worldEvents = new WorldEventScheduler(worldEventDefinitions);
     this.spawn = new SpawnRuntime({ registry: this.entities, definitions: spawnDefinitions, createEntity: entity => entity, emit: event => this.#emit(event.type, event) });
     this.population = new PopulationRuntime({ registry: this.entities, emit: event => this.#emit(event.type, event) });
+    this.interactions = new InteractionRuntime({ registry: this.entities, emit: event => this.#emit(event.type, event) });
     this.actionResolver = new ActionResolver({ movement: this.movement, combat: this.combat, inventory: this.inventory, onEvent: event => this.#emit(event.type, event) });
     this.agents = new AgentRuntime({
       onGoalChanged: (actorId, goal) => this.#emit('GOAL_CHANGED', { actorId, goal: goal.toJSON() }),
@@ -72,6 +74,7 @@ export class WorldRuntime {
 
   registerAgent(entity) { this.addEntity(entity); this.agents.register(entity.id); return entity; }
   setGoal(actorId, goal) { return this.agents.setGoal(actorId, goal, this.clock.minutes); }
+  talk(actorId, targetId) { return this.interactions.talk(actorId, targetId); }
 
   start() { this.mode = 'RUNNING'; this.#emit('WORLD_STARTED'); }
   pause() { if (this.mode === 'RUNNING') { this.mode = 'PAUSED'; this.#emit('WORLD_PAUSED'); } }
@@ -117,6 +120,7 @@ export class WorldRuntime {
       actionPlanner: actorId => new DefaultActionPlanner({ entityProvider: id => runtime.entities.get(id), nearbyProvider: entity => runtime.spatial.inZone(entity.zoneId, { type: 'MONSTER' }) }).plan(actorId)
     });
     runtime.agents.restore(snapshot.agents);
+    runtime.interactions = new InteractionRuntime({ registry: runtime.entities, emit: event => runtime.#emit(event.type, event) });
     for (const entity of runtime.entities.byType('NPC').concat(runtime.entities.byType('PLAYER'))) runtime.agents.register(entity.id);
     return runtime;
   }
