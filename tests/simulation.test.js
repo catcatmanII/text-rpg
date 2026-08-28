@@ -327,3 +327,13 @@ test('daily decision events pause for a player choice and apply consequences', (
   assert.equal(world.settlement.prosperity, before + 5);
   assert.ok(world.eventLog.events.some(event => event.type === 'DECISION_EVENT_RESOLVED'));
 });
+
+test('threat pressure causes an incident and can be reduced by clearing', () => {
+  const registry = new EntityRegistry({ monster: { id: 'monster', type: 'MONSTER', alive: true, hp: 5, maxHp: 5, attack: 1 } });
+  const settlement = new SettlementRuntime(); settlement.addResource('food', 20);
+  const events = []; const threat = new ThreatRuntime({ registry, settlement, emit: event => events.push(event) });
+  threat.tick(0); threat.tick(1440); threat.tick(2880);
+  assert.ok(events.some(event => event.type === 'MONSTER_INCIDENT'));
+  assert.equal(threat.pressure, 10);
+  assert.equal(threat.reduce(10), 0);
+});

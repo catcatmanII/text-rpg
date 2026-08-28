@@ -1,5 +1,5 @@
 export class ActivityRuntime {
-  constructor({ registry, energy, definitions, settlement, emit } = {}) { this.registry = registry; this.energy = energy; this.definitions = definitions; this.settlement = settlement; this.emit = emit; this.active = null; }
+  constructor({ registry, energy, definitions, settlement, threat, emit } = {}) { this.registry = registry; this.energy = energy; this.definitions = definitions; this.settlement = settlement; this.threat = threat; this.emit = emit; this.active = null; }
   start(playerId, activityId) {
     if (this.active) return { ok: false, reason: 'ACTIVITY_IN_PROGRESS' };
     const definition = this.definitions[activityId]; const player = this.registry.get(playerId);
@@ -18,6 +18,7 @@ export class ActivityRuntime {
   #complete() {
     const completed = this.active; const definition = this.definitions[completed.activityId];
     this.settlement.applyActivityReward(definition.rewards, completed.activityId);
+    if (completed.activityId === 'CLEAR') this.threat?.reduce(15);
     const player = this.registry.get(completed.playerId); player.completedActivities ??= []; player.completedActivities.push(completed.activityId);
     this.emit?.({ type: 'ACTIVITY_COMPLETED', playerId: completed.playerId, activityId: completed.activityId, rewards: definition.rewards });
     this.active = null;

@@ -63,14 +63,14 @@ export class WorldRuntime {
     this.settlement = new SettlementRuntime({ emit: event => this.#emit(event.type, event), levels: settlementLevels });
     this.buildings = new BuildingRuntime({ settlement: this.settlement, definitions: buildingDefinitions, emit: event => this.#emit(event.type, event) });
     this.population.setSettlement(this.settlement);
+    this.threat = new ThreatRuntime({ registry: this.entities, settlement: this.settlement, buildings: this.buildings, emit: event => this.#emit(event.type, event) });
     this.economy = new EconomyRuntime({ registry: this.entities, inventory: this.inventory, settlement: this.settlement, buildings: this.buildings, emit: event => this.#emit(event.type, event), definitions: economyDefinitions });
     this.stats = new WorldStatsRuntime({ eventLog: this.eventLog, registry: this.entities });
     this.requests = new RequestRuntime({ registry: this.entities, economy: this.economy, settlement: this.settlement, emit: event => this.#emit(event.type, event) });
-    this.causality = new CausalityRuntime({ registry: this.entities, economy: this.economy, settlement: this.settlement, buildings: this.buildings, emit: event => this.#emit(event.type, event) });
-    this.threat = new ThreatRuntime({ registry: this.entities, settlement: this.settlement, emit: event => this.#emit(event.type, event) });
+    this.causality = new CausalityRuntime({ registry: this.entities, economy: this.economy, settlement: this.settlement, buildings: this.buildings, threat: this.threat, emit: event => this.#emit(event.type, event) });
     this.decisionEvents = new DecisionEventRuntime({ settlement: this.settlement, registry: this.entities, population: this.population, emit: event => this.#emit(event.type, event), definitions: decisionEventDefinitions });
     this.energy = new PlayerEnergyRuntime({ registry: this.entities, emit: event => this.#emit(event.type, event) });
-    this.activities = new ActivityRuntime({ registry: this.entities, energy: this.energy, definitions: activityDefinitions, settlement: this.settlement, emit: event => this.#emit(event.type, event) });
+    this.activities = new ActivityRuntime({ registry: this.entities, energy: this.energy, definitions: activityDefinitions, settlement: this.settlement, threat: this.threat, emit: event => this.#emit(event.type, event) });
     this.actionResolver = new ActionResolver({ movement: this.movement, combat: this.combat, inventory: this.inventory, onEvent: event => this.#emit(event.type, event) });
     this.agents = new AgentRuntime({
       onGoalChanged: (actorId, goal) => this.#emit('GOAL_CHANGED', { actorId, goal: goal.toJSON() }),
@@ -162,6 +162,7 @@ export class WorldRuntime {
     });
     runtime.agents.restore(snapshot.agents);
     runtime.spawn.registry = runtime.entities;
+    runtime.threat.registry = runtime.entities;
     runtime.population.registry = runtime.entities; runtime.population.setSettlement(runtime.settlement);
     runtime.interactions.registry = runtime.entities;
     runtime.economy.registry = runtime.entities; runtime.requests.registry = runtime.entities; runtime.requests.settlement = runtime.settlement;
