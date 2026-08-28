@@ -237,3 +237,12 @@ test('resident content supports inspection, requests and changing dialogue', () 
   assert.equal(world.talk('player', 'farmer-a').reply, '今年的田地需要更多人手。');
   assert.equal(world.talk('player', 'farmer-a').reply, '謝謝你願意聽我說，農作物總算有希望了。');
 });
+
+test('resident requests can be completed and cause rewards and relationship changes', () => {
+  const world = createMinimalWorld();
+  world.acceptResidentRequest('player', 'resident-a');
+  world.talk('player', 'resident-a'); world.talk('player', 'resident-a'); world.evaluateRequests();
+  assert.equal(world.entities.get('player').requests['resident-a'].completed, true);
+  assert.equal(world.entities.get('player').exp, 3);
+  assert.equal(world.eventLog.events.at(-1).type, 'REQUEST_COMPLETED');
+});

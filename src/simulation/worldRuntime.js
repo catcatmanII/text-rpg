@@ -25,6 +25,8 @@ import { InteractionRuntime } from '../interaction/interactionRuntime.js';
 import { EconomyRuntime } from '../economy/economyRuntime.js';
 import { economyDefinitions } from '../content/economyDefinitions.js';
 import { WorldStatsRuntime } from '../world/worldStatsRuntime.js';
+import { RequestRuntime } from '../interaction/requestRuntime.js';
+import { CausalityRuntime } from '../world/causalityRuntime.js';
 
 export class WorldRuntime {
   constructor({ worldId = 'world_001', startMinutes = 0 } = {}) {
@@ -50,6 +52,8 @@ export class WorldRuntime {
     this.interactions = new InteractionRuntime({ registry: this.entities, emit: event => this.#emit(event.type, event) });
     this.economy = new EconomyRuntime({ registry: this.entities, inventory: this.inventory, emit: event => this.#emit(event.type, event), definitions: economyDefinitions });
     this.stats = new WorldStatsRuntime({ eventLog: this.eventLog, registry: this.entities });
+    this.requests = new RequestRuntime({ registry: this.entities, economy: this.economy, emit: event => this.#emit(event.type, event) });
+    this.causality = new CausalityRuntime({ registry: this.entities, economy: this.economy, emit: event => this.#emit(event.type, event) });
     this.actionResolver = new ActionResolver({ movement: this.movement, combat: this.combat, inventory: this.inventory, onEvent: event => this.#emit(event.type, event) });
     this.agents = new AgentRuntime({
       onGoalChanged: (actorId, goal) => this.#emit('GOAL_CHANGED', { actorId, goal: goal.toJSON() }),
@@ -82,6 +86,7 @@ export class WorldRuntime {
   talk(actorId, targetId) { return this.interactions.talk(actorId, targetId); }
   inspectResident(targetId) { return this.interactions.inspect(targetId); }
   acceptResidentRequest(actorId, targetId) { return this.interactions.acceptRequest(actorId, targetId); }
+  evaluateRequests() { this.requests.evaluate(this.clock.minutes); }
 
   start() { this.mode = 'RUNNING'; this.#emit('WORLD_STARTED'); }
   pause() { if (this.mode === 'RUNNING') { this.mode = 'PAUSED'; this.#emit('WORLD_PAUSED'); } }
@@ -98,6 +103,8 @@ export class WorldRuntime {
     this.spawn.evaluate(this.clock.minutes);
     this.population.tick(this.clock.minutes, minutes);
     this.economy.tick(this.clock.minutes, minutes);
+    this.causality.tick(this.clock.minutes);
+    this.requests.evaluate(this.clock.minutes);
     this.worldEvents.evaluate(this.clock.minutes, event => { this.#emit('WORLD_EVENT', event); if (event.type === 'MARKET_DAY') this.resources.replenish(); });
     return this.#emit('WORLD_TICK', { minutes, version: this.state.version });
   }
