@@ -8,7 +8,7 @@ export class SettlementRuntime {
     this.safety = Math.min(100, this.safety + (rewards.safety ?? 0)); this.morale = Math.max(0, Math.min(100, this.morale + (rewards.morale ?? 0))); this.prosperity += rewards.prosperity ?? 0;
     this.emit?.({ type: 'SETTLEMENT_REWARD', activityId, rewards, prosperity: this.prosperity });
   }
-  tick({ population = 0, minutes = 1 } = {}) {
+  tick({ population = 0, minutes = 1, buildings } = {}) {
     this.minutesSinceRation += minutes;
     if (this.minutesSinceRation >= this.rationInterval) {
       const rations = Math.floor(this.minutesSinceRation / this.rationInterval);
@@ -17,7 +17,8 @@ export class SettlementRuntime {
       else if (population > 0) { this.shortageMinutes += this.rationInterval * rations; this.morale = Math.max(0, this.morale - 2); this.emit?.({ type: 'SETTLEMENT_SHORTAGE', population, food: this.food, shortageMinutes: this.shortageMinutes }); if (this.shortageMinutes >= 3 * this.rationInterval) { this.safety = Math.max(0, this.safety - 1); this.prosperity = Math.max(0, this.prosperity - 1); this.shortageMinutes = 0; this.emit?.({ type: 'PROSPERITY_DECAY', reason: 'SUSTAINED_FOOD_SHORTAGE', prosperity: this.prosperity }); } }
     }
     const next = this.levels.find(entry => entry.level === this.level + 1);
-    if (next && this.prosperity >= next.prosperity && population >= next.population && this.food >= next.food) { this.level = next.level; this.housing = next.housing ?? this.housing + 4; this.marketTier = next.marketTier ?? this.level; this.emit?.({ type: 'SETTLEMENT_LEVEL_UP', level: this.level, housing: this.housing, marketTier: this.marketTier }); }
+    const hasBuildings = (next?.requiresBuildings ?? []).every(buildingId => buildings?.has(buildingId));
+    if (next && hasBuildings && this.prosperity >= next.prosperity && population >= next.population && this.food >= next.food) { this.level = next.level; this.housing = next.housing ?? this.housing + 4; this.marketTier = next.marketTier ?? this.level; this.emit?.({ type: 'SETTLEMENT_LEVEL_UP', level: this.level, housing: this.housing, marketTier: this.marketTier }); }
   }
   snapshot() { return { prosperity: this.prosperity, safety: this.safety, food: this.food, level: this.level, shortageMinutes: this.shortageMinutes, minutesSinceRation: this.minutesSinceRation, housing: this.housing, marketTier: this.marketTier, morale: this.morale, resources: { ...this.resources }, capacities: { ...this.capacities } }; }
   restore(snapshot = {}) { Object.assign(this, { prosperity: snapshot.prosperity ?? this.prosperity, safety: snapshot.safety ?? this.safety, food: snapshot.food ?? this.food, level: snapshot.level ?? this.level, shortageMinutes: snapshot.shortageMinutes ?? 0, minutesSinceRation: snapshot.minutesSinceRation ?? 0, housing: snapshot.housing ?? this.housing, marketTier: snapshot.marketTier ?? this.marketTier, morale: snapshot.morale ?? this.morale, resources: { ...this.resources, ...(snapshot.resources ?? {}) }, capacities: { ...this.capacities, ...(snapshot.capacities ?? {}) } }); this.#syncLegacyFood(); }

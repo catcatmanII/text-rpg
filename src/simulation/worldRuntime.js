@@ -33,6 +33,8 @@ import { activityDefinitions } from '../activity/activityDefinitions.js';
 import { SettlementRuntime } from '../settlement/settlementRuntime.js';
 import { settlementLevels } from '../content/settlementLevels.js';
 import { ThreatRuntime } from '../world/threatRuntime.js';
+import { BuildingRuntime } from '../settlement/buildingRuntime.js';
+import { buildingDefinitions } from '../content/buildingDefinitions.js';
 
 export class WorldRuntime {
   constructor({ worldId = 'world_001', startMinutes = 0 } = {}) {
@@ -57,11 +59,12 @@ export class WorldRuntime {
     this.population = new PopulationRuntime({ registry: this.entities, emit: event => this.#emit(event.type, event) });
     this.interactions = new InteractionRuntime({ registry: this.entities, emit: event => this.#emit(event.type, event) });
     this.settlement = new SettlementRuntime({ emit: event => this.#emit(event.type, event), levels: settlementLevels });
+    this.buildings = new BuildingRuntime({ settlement: this.settlement, definitions: buildingDefinitions, emit: event => this.#emit(event.type, event) });
     this.population.setSettlement(this.settlement);
-    this.economy = new EconomyRuntime({ registry: this.entities, inventory: this.inventory, settlement: this.settlement, emit: event => this.#emit(event.type, event), definitions: economyDefinitions });
+    this.economy = new EconomyRuntime({ registry: this.entities, inventory: this.inventory, settlement: this.settlement, buildings: this.buildings, emit: event => this.#emit(event.type, event), definitions: economyDefinitions });
     this.stats = new WorldStatsRuntime({ eventLog: this.eventLog, registry: this.entities });
     this.requests = new RequestRuntime({ registry: this.entities, economy: this.economy, settlement: this.settlement, emit: event => this.#emit(event.type, event) });
-    this.causality = new CausalityRuntime({ registry: this.entities, economy: this.economy, settlement: this.settlement, emit: event => this.#emit(event.type, event) });
+    this.causality = new CausalityRuntime({ registry: this.entities, economy: this.economy, settlement: this.settlement, buildings: this.buildings, emit: event => this.#emit(event.type, event) });
     this.threat = new ThreatRuntime({ registry: this.entities, settlement: this.settlement, emit: event => this.#emit(event.type, event) });
     this.energy = new PlayerEnergyRuntime({ registry: this.entities, emit: event => this.#emit(event.type, event) });
     this.activities = new ActivityRuntime({ registry: this.entities, energy: this.energy, definitions: activityDefinitions, settlement: this.settlement, emit: event => this.#emit(event.type, event) });
@@ -98,6 +101,7 @@ export class WorldRuntime {
   inspectResident(targetId) { return this.interactions.inspect(targetId); }
   acceptResidentRequest(actorId, targetId) { return this.interactions.acceptRequest(actorId, targetId); }
   startActivity(activityId, playerId = 'player') { return this.activities.start(playerId, activityId); }
+  build(buildingId, playerId = 'player') { return this.buildings.build(buildingId, playerId); }
   evaluateRequests() { this.requests.evaluate(this.clock.minutes); }
 
   start() { this.mode = 'RUNNING'; this.#emit('WORLD_STARTED'); }
@@ -120,7 +124,7 @@ export class WorldRuntime {
     this.causality.tick(this.clock.minutes);
     this.requests.evaluate(this.clock.minutes);
     this.activities.tick(minutes);
-    this.settlement.tick({ population: this.population.stats().alive, minutes });
+    this.settlement.tick({ population: this.population.stats().alive, minutes, buildings: this.buildings });
     this.worldEvents.evaluate(this.clock.minutes, event => { this.#emit('WORLD_EVENT', event); if (event.type === 'MARKET_DAY') this.resources.replenish(); });
     return this.#emit('WORLD_TICK', { minutes, version: this.state.version });
   }
@@ -131,7 +135,7 @@ export class WorldRuntime {
     return this.snapshot();
   }
 
-  snapshot() { return structuredClone({ worldId: this.worldId, mode: this.mode, state: this.state.toJSON(), agents: this.agents.snapshot(), events: this.eventLog.toJSON() }); }
+  snapshot() { return structuredClone({ worldId: this.worldId, mode: this.mode, state: this.state.toJSON(), agents: this.agents.snapshot(), events: this.eventLog.toJSON(), settlement: this.settlement.snapshot(), economy: this.economy.snapshot(), buildings: this.buildings.snapshot(), threat: this.threat.snapshot() }); }
 
   #emit(type, payload = {}) { return this.eventLog.append({ worldTime: this.clock.minutes, type, payload }); }
 
@@ -151,6 +155,13 @@ export class WorldRuntime {
       actionPlanner: actorId => new DefaultActionPlanner({ entityProvider: id => runtime.entities.get(id), nearbyProvider: entity => runtime.spatial.inZone(entity.zoneId, { type: 'MONSTER' }) }).plan(actorId)
     });
     runtime.agents.restore(snapshot.agents);
+    runtime.spawn.registry = runtime.entities;
+    runtime.population.registry = runtime.entities; runtime.population.setSettlement(runtime.settlement);
+    runtime.interactions.registry = runtime.entities;
+    runtime.economy.registry = runtime.entities; runtime.requests.registry = runtime.entities; runtime.requests.settlement = runtime.settlement;
+    runtime.causality.registry = runtime.entities; runtime.causality.settlement = runtime.settlement;
+    runtime.stats.registry = runtime.entities;
+    runtime.settlement.restore(snapshot.settlement); runtime.economy.restore(snapshot.economy); runtime.buildings.restore(snapshot.buildings); runtime.threat.restore(snapshot.threat);
     runtime.interactions = new InteractionRuntime({ registry: runtime.entities, emit: event => runtime.#emit(event.type, event) });
     for (const entity of runtime.entities.byType('NPC').concat(runtime.entities.byType('PLAYER'))) runtime.agents.register(entity.id);
     return runtime;

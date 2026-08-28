@@ -304,3 +304,14 @@ test('residents contribute by profession and births respect housing', () => {
   world.runTicks(1440);
   assert.equal(world.population.stats().alive, before);
 });
+
+test('buildings consume resources, change effects and survive save/load', () => {
+  const world = createMinimalWorld();
+  world.settlement.addResource('wood', 20); world.settlement.addResource('stone', 10);
+  assert.equal(world.build('HOUSE').ok, true);
+  assert.equal(world.buildings.has('HOUSE'), true);
+  assert.equal(world.settlement.housing, 8);
+  const restored = loadWorld(saveWorld(world));
+  assert.equal(restored.buildings.has('HOUSE'), true);
+  assert.equal(restored.settlement.resources.wood, 0);
+});
